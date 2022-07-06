@@ -298,6 +298,16 @@ public:
 
     int mnDataset;
 
+    bool checkIsKeyFrame()
+    {
+        return isKeyFrame;
+    }
+
+    void setIsKeyFrame(bool isKF)
+    {
+        isKeyFrame = isKF;
+    }
+
 #ifdef REGISTER_TIMES
     double mTimeORB_Ext;
     double mTimeStereoMatch;
@@ -367,6 +377,9 @@ public:
     }
 
     Sophus::SE3<double> T_test;
+
+    bool isKeyFrame = false;
+    std::mutex* isKFmutex;
 };
 
 }// namespace ORB_SLAM

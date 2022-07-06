@@ -186,6 +186,22 @@ public:
 
     float GetImageScale();
 
+    //Additions
+    ORB_SLAM3::Atlas* GetAtlas()
+    {
+        return mpAtlas;
+    }
+
+    ORB_SLAM3::FrameDrawer* GetDebugImg()
+    {
+        return mpFrameDrawer;
+    }
+
+    ORB_SLAM3::Tracking* GetTracker()
+    {
+        return mpTracker;
+    }
+
 #ifdef REGISTER_TIMES
     void InsertRectTime(double& time);
     void InsertResizeTime(double& time);
@@ -262,6 +278,7 @@ private:
     string mStrVocabularyFilePath;
 
     Settings* settings_;
+
 };
 
 }// namespace ORB_SLAM

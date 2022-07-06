@@ -3222,6 +3222,11 @@ void Tracking::CreateNewKeyFrame()
         return;
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpAtlas->GetCurrentMap(),mpKeyFrameDB);
+    if(pKF)
+    {
+        mCurrentFrame.setIsKeyFrame(true);
+        kf_poses_vector.push_back(pKF->GetPose());
+    }
 
     if(mpAtlas->isImuInitialized()) //  || mpLocalMapper->IsInitializing())
         pKF->bImu = true;

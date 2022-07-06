@@ -108,6 +108,8 @@ public:
 
     float GetImageScale();
 
+
+
 #ifdef REGISTER_LOOP
     void RequestStop();
     bool isStopped();
@@ -137,6 +139,7 @@ public:
     // Current Frame
     Frame mCurrentFrame;
     Frame mLastFrame;
+    std::vector<Sophus::SE3f> kf_poses_vector;
 
     cv::Mat mImGray;
 
@@ -356,6 +359,7 @@ protected:
     Sophus::SE3f mTlr;
 
     void newParameterLoader(Settings* settings);
+    
 
 #ifdef REGISTER_LOOP
     bool Stop();

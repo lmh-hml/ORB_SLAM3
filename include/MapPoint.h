@@ -159,6 +159,11 @@ public:
 
     void PreSave(set<KeyFrame*>& spKF,set<MapPoint*>& spMP);
     void PostLoad(map<long unsigned int, KeyFrame*>& mpKFid, map<long unsigned int, MapPoint*>& mpMPid);
+    
+    static bool lId(MapPoint* pMp1, MapPoint* pMp2){
+        return pMp1->mnId<pMp2->mnId;
+    }
+
 
 public:
     long unsigned int mnId;

@@ -1,0 +1,27 @@
+<launch>
+
+    <arg name="settings" default="astra_rgbd"/>
+
+    <arg name="map_frame" default="map"/>
+    <arg name="target_frame" default="base_footprint"/>
+    <arg name="camera_frame" default="camera_link"/>
+    <arg name="load" default="false"/>
+
+    <arg name="vocab_path" default="/home/lmh/ORB_SLAM3/Vocabulary/ORBvoc.txt"/>
+
+
+	
+
+
+    <param name="map_frame_id" type="string" value="$(arg map_frame)"/>
+    <param name="camera_frame_id" type="string" value="$(arg camera_frame)"/>
+    <param name="target_frame_id" type="string" value="$(arg target_frame)"/>
+    <param name="use_viewer" type="boolean" value="false"/>
+
+
+    <node pkg="ORB_SLAM3" name="RGBD" type="RGBD2" args="$(arg vocab_path) /home/lmh/ORB_SLAM3/Examples_old/RGB-D/$(arg settings).yaml" output="screen">
+        <remap from="/camera/depth_registered/image_raw" to="/camera/depth/image_rect"/>
+        <remap from="/camera/rgb/image_raw" to="/camera/rgb/image_raw"/>
+    </node>
+
+</launch>

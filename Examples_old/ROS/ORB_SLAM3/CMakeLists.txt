@@ -38,8 +38,19 @@ if(NOT OpenCV_FOUND)
    endif()
 endif()
 
+MESSAGE("OPENCV VERSION:")
+MESSAGE(${OpenCV_VERSION})
+
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(PCL 1.8 REQUIRED)
+
+
+
+MESSAGE("Eigen 3 VERSION:")
+MESSAGE(${Eigen3_VERSION})
+
+MESSAGE(${PCL_INCLUDE_DIRS})
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
@@ -47,6 +58,7 @@ ${PROJECT_SOURCE_DIR}/../../../
 ${PROJECT_SOURCE_DIR}/../../../include
 ${PROJECT_SOURCE_DIR}/../../../include/CameraModels
 ${Pangolin_INCLUDE_DIRS}
+/usr/include/pcl-1.8/
 )
 
 set(LIBS 
@@ -56,8 +68,14 @@ ${Pangolin_LIBRARIES}
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/../../../Thirdparty/g2o/lib/libg2o.so
 ${PROJECT_SOURCE_DIR}/../../../lib/libORB_SLAM3.so
+${PCL_LIBRARIES}
 -lboost_system
 )
+
+include_directories(
+${EIGEN3_INCLUDE_DIR}
+)
+
 
 # Node for monocular camera
 rosbuild_add_executable(Mono
@@ -69,15 +87,15 @@ ${LIBS}
 )
 
 # Node for monocular camera (Augmented Reality Demo)
-rosbuild_add_executable(MonoAR
-src/AR/ros_mono_ar.cc
-src/AR/ViewerAR.h
-src/AR/ViewerAR.cc
-)
+# rosbuild_add_executable(MonoAR
+# src/AR/ros_mono_ar.cc
+# src/AR/ViewerAR.h
+# src/AR/ViewerAR.cc
+# )
 
-target_link_libraries(MonoAR
-${LIBS}
-)
+# target_link_libraries(MonoAR
+# ${LIBS}
+# )
 
 # Node for stereo camera
 rosbuild_add_executable(Stereo
@@ -89,13 +107,24 @@ ${LIBS}
 )
 
 # Node for RGB-D camera
-rosbuild_add_executable(RGBD
-src/ros_rgbd.cc
+#Accidentally deleted RGBD original src file, removed for now
+
+# rosbuild_add_executable(RGBD
+# src/ros_rgbd.cc
+# )
+
+# target_link_libraries(RGBD
+# ${LIBS}
+# )
+
+rosbuild_add_executable(RGBD2
+src/ros_rgbd_node.cc
 )
 
-target_link_libraries(RGBD
+target_link_libraries(RGBD2
 ${LIBS}
 )
+
 
 # Node for monocular-inertial camera
 rosbuild_add_executable(Mono_Inertial
@@ -110,7 +139,14 @@ ${LIBS}
 rosbuild_add_executable(Stereo_Inertial
 src/ros_stereo_inertial.cc
 )
-
 target_link_libraries(Stereo_Inertial
 ${LIBS}
 )
+
+rosbuild_add_executable(map_maker
+src/ros_map_maker.cc
+)
+target_link_libraries(map_maker
+${LIBS}
+)
+

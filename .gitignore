@@ -7,6 +7,8 @@
 # Unignore all dirs
 !*/
 
+*.osa
+
 CMakeLists.txt.user
 CMakeLists_modified.txt
 
@@ -91,3 +93,11 @@ my_settings.txt
 borrar/*
 
 */ExecMean.txt
+
+devel/*
+
+logs/*
+
+.vscode/*
+
+.catkin*/*

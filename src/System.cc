@@ -514,6 +514,15 @@ void System::ResetActiveMap()
 
 void System::Shutdown()
 {
+
+    if(!mStrSaveAtlasToFile.empty())
+    {
+        cout<<"Saving atlas to file "+mStrSaveAtlasToFile<<endl;
+        Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
+        SaveAtlas(FileType::BINARY_FILE);
+    }
+    cout << "Saved Atlas Finished" << endl;
+
     {
         unique_lock<mutex> lock(mMutexReset);
         mbShutDown = true;
@@ -523,6 +532,9 @@ void System::Shutdown()
 
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
+
+    cout << "Shutdown Finished" << endl;
+
     /*if(mpViewer)
     {
         mpViewer->RequestFinish();
@@ -545,11 +557,6 @@ void System::Shutdown()
         /*usleep(5000);
     }*/
 
-    if(!mStrSaveAtlasToFile.empty())
-    {
-        Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
-        SaveAtlas(FileType::BINARY_FILE);
-    }
 
     /*if(mpViewer)
         pangolin::BindToContext("ORB-SLAM2: Map Viewer");*/
@@ -1544,6 +1551,7 @@ string System::CalculateCheckSum(string filename, int type)
 
     return checksum;
 }
+
 
 } //namespace ORB_SLAM
 
