@@ -101,3 +101,9 @@ logs/*
 .vscode/*
 
 .catkin*/*
+
+devel/*
+
+*/.catkin_workspace
+Examples_old/orb_slam3_msgs/.catkin_workspace
+Examples_old/orb_slam3_msgs/devel/*

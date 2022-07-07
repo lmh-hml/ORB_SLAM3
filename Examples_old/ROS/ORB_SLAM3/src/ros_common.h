@@ -296,6 +296,11 @@ class ORB_ROS_Node
 
     void update(Sophus::SE3f position, ros::Time current_frame_time)
     {
+            auto atlas = orb_system->GetAtlas();
+            auto map = atlas->GetCurrentMap();
+            auto map_points= map->GetAllMapPoints();
+            auto kfs = map->GetAllKeyFrames();
+
             check_atlas_status();
             update_current_position(position);
             publish_current_global_map_points(current_frame_time);

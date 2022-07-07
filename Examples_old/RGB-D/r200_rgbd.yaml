@@ -69,6 +69,6 @@ Viewer.ViewpointY: -0.7
 Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500
 
-System.LoadAtlasFromFile: "orb_atlas"
-System.SaveAtlasToFile: "orb_atlas"
+# System.LoadAtlasFromFile: "orb_atlas"
+# System.SaveAtlasToFile: "orb_atlas"
 
