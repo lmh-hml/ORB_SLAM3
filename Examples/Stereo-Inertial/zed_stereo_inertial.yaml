@@ -50,7 +50,7 @@ Camera.fps: 15
 Camera.RGB: 1
 
 # Close/Far threshold. Baseline times.
-Stereo.ThDepth: 35.0
+Stereo.ThDepth: 40.0
 Stereo.T_c1_c2: !!opencv-matrix
   rows: 4
   cols: 4
@@ -75,8 +75,8 @@ IMU.T_b_c1: !!opencv-matrix
 
 # IMU noise
 IMU.NoiseGyro: 7.00e-03 # 1.6968e-04
-IMU.NoiseAcc: 1.59e-03  # 2.0000e-3
-IMU.GyroWalk: 1.95e-03
+IMU.NoiseAcc: 1.6e-03  # 2.0000e-3
+IMU.GyroWalk: 1.9e-03
 IMU.AccWalk: 2.50e-04  # 3.0000e-3
 IMU.Frequency: 400.0
 
