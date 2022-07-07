@@ -15,9 +15,9 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 
-#include <ORB_SLAM3_msgs/keyframe_msg.h>
-#include <ORB_SLAM3_msgs/orb_slam_map_msg.h>
-#include <ORB_SLAM3_msgs/keyframe_pointcloud.h>
+#include <orb_slam3_msgs/keyframe_msg.h>
+#include <orb_slam3_msgs/orb_slam_map_msg.h>
+#include <orb_slam3_msgs/keyframe_pointcloud.h>
 
 
 #include <tf/tf.h>
@@ -260,7 +260,7 @@ std::vector<cv::Point2d> bresenham_line(int x1, int y1, int x2, int y2)
     return line;
 }
 
-void keyframe_to_msg(ORB_SLAM3::KeyFrame* keyframe, ORB_SLAM3_msgs::keyframe_msg& msg, bool mp_id_only=false)
+void keyframe_to_msg(ORB_SLAM3::KeyFrame* keyframe, orb_slam3_msgs::keyframe_msg& msg, bool mp_id_only=false)
 {
     geometry_msgs::Transform tf_msg;
     geometry_msgs::Pose kf_pose;
@@ -284,7 +284,7 @@ void keyframe_to_msg(ORB_SLAM3::KeyFrame* keyframe, ORB_SLAM3_msgs::keyframe_msg
     msg.id = keyframe->mnId;
 }
 
-void keyframe_to_keyframe_pointcloud_msg(ORB_SLAM3::KeyFrame* keyframe,  ORB_SLAM3_msgs::keyframe_pointcloud& kf_pcl)
+void keyframe_to_keyframe_pointcloud_msg(ORB_SLAM3::KeyFrame* keyframe,  orb_slam3_msgs::keyframe_pointcloud& kf_pcl)
 {
     auto map_points = keyframe->GetMapPoints();
     geometry_msgs::Transform tf;
@@ -294,7 +294,7 @@ void keyframe_to_keyframe_pointcloud_msg(ORB_SLAM3::KeyFrame* keyframe,  ORB_SLA
     map_points_to_point_cloud( vector<ORB_SLAM3::MapPoint*>(map_points.begin(), map_points.end()), kf_pcl.pointcloud,kf_pcl.header.frame_id);
 }
 
-void orb_slam_map_to_msg(ORB_SLAM3::Map* map, ORB_SLAM3_msgs::orb_slam_map_msg& msg)
+void orb_slam_map_to_msg(ORB_SLAM3::Map* map, orb_slam3_msgs::orb_slam_map_msg& msg)
 {
     geometry_msgs::PoseArray pose_array;
     {
@@ -309,7 +309,7 @@ void orb_slam_map_to_msg(ORB_SLAM3::Map* map, ORB_SLAM3_msgs::orb_slam_map_msg& 
 
         for(ORB_SLAM3::KeyFrame* kf : keyframes)
         {
-            ORB_SLAM3_msgs::keyframe_msg kf_msg;
+            orb_slam3_msgs::keyframe_msg kf_msg;
             keyframe_to_msg(kf, kf_msg, true);
             msg.keyframes.push_back(kf_msg);
         }

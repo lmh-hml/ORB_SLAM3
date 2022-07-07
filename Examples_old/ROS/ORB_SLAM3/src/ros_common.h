@@ -17,8 +17,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 
-#include <ORB_SLAM3_msgs/keyframe_msg.h>
-#include <ORB_SLAM3_msgs/keyframe_pointcloud.h>
+#include <orb_slam3_msgs/keyframe_msg.h>
+#include <orb_slam3_msgs/keyframe_pointcloud.h>
 #include "utility.h"
 
 
@@ -47,6 +47,7 @@ class ORB_ROS_Node
         last_kf_size = 0;
         init_ORB_SLAM(system);
         init_ros();
+
     };
 
     void init_ros()
@@ -58,9 +59,9 @@ class ORB_ROS_Node
         kf_pose_array_pub = node_handle->advertise<geometry_msgs::PoseArray>(node_name+"/kf_pose_array",5);
         initial_kf_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/initial_kf_pose",5);
         orb_slam_goal_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/goal",5);
-        orb_slam_map_pub = node_handle->advertise<ORB_SLAM3_msgs::orb_slam_map_msg>(node_name+"/orb_slam3_map_msg",5);
+        orb_slam_map_pub = node_handle->advertise<orb_slam3_msgs::orb_slam_map_msg>(node_name+"/orb_slam3_map_msg",5);
         image_pub = image_transport->advertise(node_name+"/debug_image",10);
-        kf_pcl_pub = node_handle->advertise<ORB_SLAM3_msgs::keyframe_pointcloud>(node_name+"/keyframe_pointcloud",5);
+        kf_pcl_pub = node_handle->advertise<orb_slam3_msgs::keyframe_pointcloud>(node_name+"/keyframe_pointcloud",5);
 
         node_handle->param<std::string>("map_frame_id", map_frame_id, "map");
         node_handle->param<std::string>("orb_slam3_frame_id", orb_slam3_map_frame_id, "orb_slam3_map");
@@ -189,7 +190,7 @@ class ORB_ROS_Node
         for( size_t i = difference; i!= 0; i--)
         {
             auto last_kf = keyframes.at(keyframes.size()-i);
-            ORB_SLAM3_msgs::keyframe_pointcloud kf_pcl;
+            orb_slam3_msgs::keyframe_pointcloud kf_pcl;
             kf_pcl.header.frame_id = orb_slam3_map_frame_id;
             kf_pcl.header.stamp = current_frame_time;
 
@@ -262,7 +263,7 @@ class ORB_ROS_Node
         if( map_changed || map_id_changed || map_count_changed)
         {
             ROS_INFO("Publishing map data");
-            ORB_SLAM3_msgs::orb_slam_map_msg map_msg;
+            orb_slam3_msgs::orb_slam_map_msg map_msg;
             orb_slam_map_to_msg(current_map,map_msg);
             orb_slam_map_pub.publish(map_msg);
         }

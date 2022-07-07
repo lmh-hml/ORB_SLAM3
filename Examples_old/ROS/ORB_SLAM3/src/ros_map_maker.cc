@@ -17,7 +17,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/OccupancyGrid.h>
-#include <ORB_SLAM3_msgs/orb_slam_map_msg.h>
+#include <orb_slam3_msgs/orb_slam_map_msg.h>
 
 
 
@@ -28,8 +28,8 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-#include <ORB_SLAM3_msgs/orb_slam_map_msg.h>
-#include <ORB_SLAM3_msgs/keyframe_pointcloud.h>
+#include <orb_slam3_msgs/orb_slam_map_msg.h>
+#include <orb_slam3_msgs/keyframe_pointcloud.h>
 
 #include<opencv2/core/core.hpp>
 
@@ -48,7 +48,7 @@ class ORB_SLAM3_Map
         map_center = cv::Point2d(occ_grid.info.width/2, occ_grid.info.height/2);
     };
 
-    ORB_SLAM3_Map(const ORB_SLAM3_msgs::orb_slam_map_msg& msg)
+    ORB_SLAM3_Map(const orb_slam3_msgs::orb_slam_map_msg& msg)
     {
         size_t new_width = msg.max_point.x - msg.min_point.x;
         size_t new_height = msg.max_point.y - msg.max_point.y;
@@ -134,7 +134,7 @@ class ORB_SLAM3_Map
     nav_msgs::OccupancyGrid occ_grid;
     cv::Point2d map_center;
     
-    ORB_SLAM3_msgs::orb_slam_map_msg map_msg;
+    orb_slam3_msgs::orb_slam_map_msg map_msg;
 };
 
 class MapMaker
@@ -179,9 +179,9 @@ class MapMaker
         occ_grid.info.origin.position.y = -(occ_grid.info.height*occ_grid.info.resolution)/2;
     }
 
-    void orb_slam_map_callback(const ORB_SLAM3_msgs::orb_slam_map_msgConstPtr& msg)
+    void orb_slam_map_callback(const orb_slam3_msgs::orb_slam_map_msgConstPtr& msg)
     {
-        ORB_SLAM3_msgs::orb_slam_map_msg map = *msg;
+        orb_slam3_msgs::orb_slam_map_msg map = *msg;
         geometry_msgs::PoseStamped min_pose, max_pose;
         max_pose.header.frame_id = min_pose.header.frame_id = "map";
         min_pose.pose.position = map.min_point;
@@ -306,9 +306,9 @@ class MapMaker
 ros::Publisher pose_pub;
 ros::Publisher pcl_pub;
 
-void kf_pcl_cb(ORB_SLAM3_msgs::keyframe_pointcloudConstPtr ptr)
+void kf_pcl_cb(orb_slam3_msgs::keyframe_pointcloudConstPtr ptr)
 {
-    ORB_SLAM3_msgs::keyframe_pointcloud kf_pcl = *ptr;
+    orb_slam3_msgs::keyframe_pointcloud kf_pcl = *ptr;
 
     geometry_msgs::PoseStamped pose;
     pose.pose = kf_pcl.pose;
@@ -326,7 +326,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     MapMaker map_maker(1001,1001);
     //ORB_SLAM_Mapper om(&nh);
-    ros::Subscriber map_sub = nh.subscribe<ORB_SLAM3_msgs::keyframe_pointcloud>("/ORB_SLAM3_RGBD/keyframe_pointcloud",5,kf_pcl_cb);
+    ros::Subscriber map_sub = nh.subscribe<orb_slam3_msgs::keyframe_pointcloud>("/ORB_SLAM3_RGBD/keyframe_pointcloud",5,kf_pcl_cb);
     
     pose_pub = nh.advertise<geometry_msgs::PoseStamped>("kf_pose", 5);
     pcl_pub = nh.advertise<sensor_msgs::PointCloud2>("pcl",5);

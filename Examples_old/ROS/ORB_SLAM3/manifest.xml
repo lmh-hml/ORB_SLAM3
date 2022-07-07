@@ -9,14 +9,14 @@
   <depend package="sensor_msgs"/>
   <depend package="image_transport"/>
   <depend package="cv_bridge"/>
-  <depend package="ORB_SLAM3_msgs"/>
+  <depend package="orb_slam3_msgs"/>
   <depend package="pcl_ros"/>
   <depend package="pcl_conversions"/>
 
 
 
-   <run_depend>ORB_SLAM3_msgs</run_depend>
-   <build_depend>ORB_SLAM3_msgs</build_depend>
+   <run_depend>orb_slam3_msgs</run_depend>
+   <build_depend>orb_slam3_msgs</build_depend>
 
   <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_depend>
