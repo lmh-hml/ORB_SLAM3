@@ -359,8 +359,18 @@ void Map::SetLastMapChange(int currentChangeId)
 void Map::PreSave(std::set<GeometricCamera*> &spCams)
 {
     int nMPWithoutObs = 0;
-    for(MapPoint* pMPi : mspMapPoints)
+
+    //Deep copy of map points since the original set may be modified in 
+    //another thread before this function finishes.
+    std::set<ORB_SLAM3::MapPoint *> mapPoints(mspMapPoints);
+
+    // size_t sz = 0;
+    // cout<< "Mp size: "<< mapPoints.size() << endl;
+
+    for(MapPoint* pMPi : mapPoints)
     {
+        // sz++;
+        // cout<< "Mp&:"<< pMPi << "No:"<<sz<< endl;
         if(!pMPi || pMPi->isBad())
             continue;
 
@@ -375,7 +385,6 @@ void Map::PreSave(std::set<GeometricCamera*> &spCams)
             {
                 pMPi->EraseObservation(it->first);
             }
-
         }
     }
 

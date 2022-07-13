@@ -202,6 +202,11 @@ public:
         return mpTracker;
     }
 
+    string mStrLoadAtlasFromFile;
+    string mStrSaveAtlasToFile;
+    void SaveAtlas(int type);
+    bool LoadAtlas(int type);
+
 #ifdef REGISTER_TIMES
     void InsertRectTime(double& time);
     void InsertResizeTime(double& time);
@@ -209,9 +214,6 @@ public:
 #endif
 
 private:
-
-    void SaveAtlas(int type);
-    bool LoadAtlas(int type);
 
     string CalculateCheckSum(string filename, int type);
 
@@ -272,8 +274,7 @@ private:
     std::mutex mMutexState;
 
     //
-    string mStrLoadAtlasFromFile;
-    string mStrSaveAtlasToFile;
+
 
     string mStrVocabularyFilePath;
 

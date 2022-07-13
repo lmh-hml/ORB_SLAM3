@@ -15,6 +15,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <std_msgs/Bool.h>
 
 
 #include <orb_slam3_msgs/keyframe_msg.h>
@@ -63,14 +64,16 @@ class ORB_ROS_Node
         image_pub = image_transport->advertise(node_name+"/debug_image",10);
         kf_pcl_pub = node_handle->advertise<orb_slam3_msgs::keyframe_pointcloud>(node_name+"/keyframe_pointcloud",5);
 
+        save_map_sub = node_handle->subscribe<std_msgs::Bool>(node_name+"/save_map",1, &ORB_ROS_Node::save_map_cb, this);
+
         node_handle->param<std::string>("map_frame_id", map_frame_id, "map");
         node_handle->param<std::string>("orb_slam3_frame_id", orb_slam3_map_frame_id, "orb_slam3_map");
         node_handle->param<std::string>("camera_frame_id", camera_frame_id, "camera_link");
         node_handle->param<std::string>("target_frame_id", target_frame_id, "orb_pose");
+        node_handle->param<std::string>("base_link_id", base_link_id, "base_footprint");
+        node_handle->param<std::string>("odom_frame_id", odom_frame_id, "odom");
 
-
-        tf2_base_link_to_camera = lookup_transform_duration("base_footprint",camera_frame_id, ros::Time(), ros::Duration(3.0));
-
+        tf2_base_link_to_camera = lookup_transform_duration(base_link_id,camera_frame_id, ros::Time(), ros::Duration(3.0));
     }
 
     void init_ORB_SLAM(ORB_SLAM3::System* system)
@@ -97,18 +100,14 @@ class ORB_ROS_Node
         pose_msg.header.stamp = transform_msg.header.stamp = frame_time;
         current_pose_pub.publish(pose_msg);
 
-        tf2::Transform cam_to_odom = lookup_transform("camera_link","odom",frame_time);
-        tf2::Transform orb_slam3_map_to_odom =  tf2_orb_slam3_map_to_camera * cam_to_odom;
-        send_transform(tf2_base_link_to_camera,"map",orb_slam3_map_frame_id,frame_time);
-        send_transform(orb_slam3_map_to_odom, orb_slam3_map_frame_id, "odom", frame_time);
+        tf2::Transform base_to_odom = lookup_transform(base_link_id, odom_frame_id,frame_time);
+
+        tf2::Transform map_to_odom = tf2_orb_slam3_map_to_camera * base_to_odom;
+        send_transform(map_to_odom,"map","odom",frame_time);
     }
 
-    void publish_current_global_map_points(ros::Time frame_time)
+    void publish_current_global_map_points(ros::Time frame_time, const std::vector<ORB_SLAM3::MapPoint*>& map_points)
     {
-        ORB_SLAM3::Atlas* atlas = orb_system->GetAtlas();
-            
-        std::vector<ORB_SLAM3::MapPoint*> map_points = atlas->GetCurrentMap()->GetAllMapPoints();
-    
         sensor_msgs::PointCloud2 cloud, cloud_out;
         cloud.header.stamp = frame_time;
         cloud.header.frame_id = orb_slam3_map_frame_id;
@@ -133,13 +132,8 @@ class ORB_ROS_Node
         image_pub.publish(rendered_image_msg);
     }
 
-    void publish_all_keyframe_pose_and_points(ros::Time frame_time)
-    {
-        ORB_SLAM3::Map* map = orb_system->GetAtlas()->GetCurrentMap();
-
-        std::vector<ORB_SLAM3::KeyFrame*> keyframes = map->GetAllKeyFrames();
-        sort(keyframes.begin(), keyframes.end(), ORB_SLAM3::KeyFrame::lId);
-    
+    void publish_all_keyframe_pose_and_points(ros::Time frame_time, const std::vector<ORB_SLAM3::KeyFrame*>& keyframes)
+    {    
         for(ORB_SLAM3::KeyFrame* kf : keyframes)
         {
             geometry_msgs::PoseArray keyframe_points_and_poses;
@@ -163,16 +157,10 @@ class ORB_ROS_Node
             //Publish
             kf_pose_array_pub.publish(keyframe_points_and_poses);
         }
-
     }
 
-    void publish_latest_keyframe_pose_and_points(ros::Time frame_time)
+    void publish_latest_keyframe_pose_and_points(ros::Time frame_time, const std::vector<ORB_SLAM3::KeyFrame*>& keyframes)
     {
-        ORB_SLAM3::Map* map = orb_system->GetAtlas()->GetCurrentMap();
-
-        std::vector<ORB_SLAM3::KeyFrame*> keyframes = map->GetAllKeyFrames();
-        sort(keyframes.begin(), keyframes.end(), ORB_SLAM3::KeyFrame::lId);
-
         //The LAST pose of this array must be the pose of the keyframe.
         geometry_msgs::PoseArray keyframe_points_and_poses;
         keyframe_points_and_poses.header.frame_id = "map";
@@ -182,7 +170,7 @@ class ORB_ROS_Node
         //Since ORB_SLAM cull keyframes, it is possible that there are LESS keyframes this frame than previous frames
         size_t current_size = keyframes.size();
         long difference = current_size - last_kf_size;
-        printf("Current/Last kf size: %d/%d\n", current_size,last_kf_size);
+        //printf("Current/Last kf size: %d/%d\n", current_size,last_kf_size);
         last_kf_size = current_size;
 
         if(difference<0)return;
@@ -196,31 +184,11 @@ class ORB_ROS_Node
 
             keyframe_to_keyframe_pointcloud_msg(last_kf, kf_pcl);
             kf_pcl_pub.publish(kf_pcl);
-        
-            // //Publish Keyframe map points
-            // auto map_points = last_kf->GetMapPoints();
-            // std::vector<ORB_SLAM3::MapPoint*> map_points_vect(map_points.begin(), map_points.end());
-            // sensor_msgs::PointCloud2 pcl;
-            // pcl.header.stamp = frame_time;
-            // map_points_to_point_cloud(map_points_vect,pcl);
-            // point_cloud_to_pose_array(pcl, keyframe_points_and_poses);
-
-            // //Publish Keyframe camera pose
-            // Sophus::SE3f kf_pose = last_kf->GetPose();
-            // geometry_msgs::Pose pose;
-            // geometry_msgs::Transform tf;
-            // tf2_to_transform_and_pose_msg(orb_slam_pose_to_tf(kf_pose), tf, pose);
-            // keyframe_points_and_poses.poses.push_back(pose);
-
-            // //Publish
-            // kf_pose_array_pub.publish(keyframe_points_and_poses);
-            // lastest_kf_map_points_pub.publish(pcl);
         }
     }
     
-    void check_atlas_status()
+    void check_atlas_status(ORB_SLAM3::Atlas* atlas, ORB_SLAM3::Map* current_map)
     {
-
         //Checks if:
         //Current map has changes since last frame
         //Number of maps in atlas has changed
@@ -229,7 +197,6 @@ class ORB_ROS_Node
         bool map_changed = orb_system->MapChanged();
         if(map_changed)ROS_INFO("Map changed!");
 
-        ORB_SLAM3::Atlas* atlas = orb_system->GetAtlas();
         size_t current_map_count = atlas->GetAllMaps().size();
         if(current_map_count!=last_map_count)
         {
@@ -242,9 +209,7 @@ class ORB_ROS_Node
             map_count_changed = false;
         }
 
-
         size_t current_map_id = 0;
-        ORB_SLAM3::Map* current_map = atlas->GetCurrentMap();
         {
             unique_lock<std::mutex> lock(current_map->mMutexMapUpdate);
             current_map_id = current_map->GetId();
@@ -297,15 +262,16 @@ class ORB_ROS_Node
 
     void update(Sophus::SE3f position, ros::Time current_frame_time)
     {
-            auto atlas = orb_system->GetAtlas();
-            auto map = atlas->GetCurrentMap();
-            auto map_points= map->GetAllMapPoints();
-            auto kfs = map->GetAllKeyFrames();
+            ORB_SLAM3::Atlas* atlas = orb_system->GetAtlas();
+            ORB_SLAM3::Map* map = atlas->GetCurrentMap();
+            std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
+            std::vector<ORB_SLAM3::KeyFrame*> all_keyframes = map->GetAllKeyFrames();
+            sort(all_keyframes.begin(), all_keyframes.end(), ORB_SLAM3::KeyFrame::lId);
 
-            check_atlas_status();
+            check_atlas_status(atlas,map);
             update_current_position(position);
-            publish_current_global_map_points(current_frame_time);
-            publish_latest_keyframe_pose_and_points(current_frame_time);
+            publish_current_global_map_points(current_frame_time, map_points);
+            publish_latest_keyframe_pose_and_points(current_frame_time,all_keyframes);
             publish_current_transform_and_pose(current_frame_time);
             publish_orb_slam_debug_image(current_frame_time);
     }
@@ -320,6 +286,8 @@ class ORB_ROS_Node
     std::string map_frame_id;
     std::string target_frame_id;
     std::string orb_slam3_map_frame_id;
+    std::string base_link_id;
+    std::string odom_frame_id;
     ros::Time current_frame_time;
 
     ros::Publisher lastest_kf_map_points_pub;
@@ -331,6 +299,8 @@ class ORB_ROS_Node
     ros::Publisher orb_slam_map_pub;
     ros::Publisher kf_pcl_pub;
     ros::Subscriber goal_sub;
+
+    ros::Subscriber save_map_sub;
 
     image_transport::ImageTransport* image_transport;
     image_transport::Publisher image_pub;
@@ -351,14 +321,12 @@ class ORB_ROS_Node
     //Camera position from orb_slam3. Updates every time an image is processed.
     tf2::Transform tf2_orb_slam3_map_to_camera;
 
-    bool goal_valid;
-
     //Used to track map and atlas changes
     size_t initial_kf_id;
     size_t last_kf_size;
     size_t last_map_id;
     size_t last_map_count;
-    bool map_id_changed, map_count_changed;
+    bool map_id_changed, map_count_changed, is_lost;
 
 
     tf2::Transform get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id)
@@ -369,8 +337,6 @@ class ORB_ROS_Node
         return map_to_target;
     }
     
-
-
     void send_transform(tf2::Transform tf,const std::string& src, const std::string& target, ros::Time time=ros::Time::now())
     {
         geometry_msgs::TransformStamped msg;
@@ -390,6 +356,7 @@ class ORB_ROS_Node
         pose.orientation = tf2::toMsg(tf.getRotation());    
         return pose;
     }
+
 
     tf2::Stamped<tf2::Transform> lookup_transform(const string& src, const string& target, ros::Time time=ros::Time())
     {
@@ -421,5 +388,18 @@ class ORB_ROS_Node
         return tf;
     }
 
+    void save_map_cb(const std_msgs::Bool::ConstPtr& msg)
+    {
+        if(msg->data == 1)
+        {
+            if(!orb_system->mStrSaveAtlasToFile.empty())
+            {
+                cout<<"Saving atlas to file "+orb_system->mStrSaveAtlasToFile<<endl;
+                ORB_SLAM3::Verbose::PrintMess("Atlas saving to file " + orb_system->mStrSaveAtlasToFile, ORB_SLAM3::Verbose::VERBOSITY_NORMAL);
+                orb_system->SaveAtlas(ORB_SLAM3::System::FileType::BINARY_FILE);
+            }
+            cout << "Saved Atlas Finished" << endl;
+        }
+    }
 
 };

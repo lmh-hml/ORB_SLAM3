@@ -52,14 +52,6 @@ class RGBD:ORB_ROS_Node
             sync->registerCallback(boost::bind(&RGBD::GrabRGBD,this,_1,_2));
         };
 
-        void shutdown(int sig)
-        {
-            orb_system->Shutdown();
-            orb_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
-            ros::shutdown();
-        }
-
-
     private:
         message_filters::Subscriber<sensor_msgs::Image>* rgb_sub;
         message_filters::Subscriber<sensor_msgs::Image>* depth_sub;
@@ -130,9 +122,6 @@ int main(int argc, char **argv)
     signal(SIGINT,sigint_handler);
 
     RGBD rgbd("ORB_SLAM3_RGBD", &SLAM, &nh);
-
-
-
 
     ros::spin();
 
