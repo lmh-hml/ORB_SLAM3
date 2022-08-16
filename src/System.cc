@@ -514,14 +514,13 @@ void System::ResetActiveMap()
 
 void System::Shutdown()
 {
-
     if(!mStrSaveAtlasToFile.empty())
     {
         cout<<"Saving atlas to file "+mStrSaveAtlasToFile<<endl;
         Verbose::PrintMess("Atlas saving to file " + mStrSaveAtlasToFile, Verbose::VERBOSITY_NORMAL);
         SaveAtlas(FileType::BINARY_FILE);
+        cout << "Saved Atlas Finished" << endl;
     }
-    cout << "Saved Atlas Finished" << endl;
 
     {
         unique_lock<mutex> lock(mMutexReset);
@@ -1550,6 +1549,11 @@ string System::CalculateCheckSum(string filename, int type)
     }
 
     return checksum;
+}
+
+bool System::isRunningGBA()
+{
+    return mpLoopCloser->isRunningGBA();
 }
 
 

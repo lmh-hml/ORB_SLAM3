@@ -91,8 +91,9 @@ class RGBD:ORB_ROS_Node
 ORB_SLAM3::System* orb_system;
 void sigint_handler(int sig)
 {
-    ROS_INFO("SHUTTING DOWN...");
+    ROS_INFO("SHUTTING DOWN ORB SLAM");
     orb_system->Shutdown();
+    //orb_system->SaveAtlas(ORB_SLAM3::System::FileType::BINARY_FILE);
     orb_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
     std::cout<<"Finished SHUTTING DOWN ORB SLAM"<<std::endl;
     ros::shutdown();
@@ -124,8 +125,6 @@ int main(int argc, char **argv)
     RGBD rgbd("ORB_SLAM3_RGBD", &SLAM, &nh);
 
     ros::spin();
-
-    std::cout<<"SHUTTING DOWN ORB SLAM"<<std::endl;
 
     // Stop all threads
     //SLAM.Shutdown();

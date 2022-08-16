@@ -40,7 +40,7 @@ DepthMapFactor: 1.0 # 1.0 for ROS_bag
 #--------------------------------------------------------------------------------------------
 
 # ORB Extractor: Number of features per image
-ORBextractor.nFeatures: 600
+ORBextractor.nFeatures: 1000
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
 ORBextractor.scaleFactor: 1.2
@@ -69,6 +69,6 @@ Viewer.ViewpointY: -0.7
 Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500
 
-System.LoadAtlasFromFile: "orb_atlas_2"
-System.SaveAtlasToFile: "orb_atlas_2"
+System.LoadAtlasFromFile: "test_map"
+System.SaveAtlasToFile: "test_map"
 

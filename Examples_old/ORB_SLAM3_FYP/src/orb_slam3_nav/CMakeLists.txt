@@ -1,50 +1,18 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(orb_slam3_msgs)
+project(orb_slam3_nav)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
-find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
-  message_generation
-  message_runtime
-  roscpp
-  rospy
-  std_msgs
-  sensor_msgs
-)
-
-add_message_files(
-  FILES
-  orb_slam_map_msg.msg
-  keyframe_msg.msg
-  keyframe_pointcloud.msg
-  MapPoint.msg
-  KeyframeWithIndices.msg
-  KeyframeWithPoints.msg
-  Map.msg
-)
-
-
-
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-generate_messages(
-  DEPENDENCIES
+find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  roscpp
+  rospy
   std_msgs
-  sensor_msgs
 )
-
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES ORB_SLAM3_msgs
-   CATKIN_DEPENDS geometry_msgs message_generation message_runtime roscpp rospy std_msgs
-#  DEPENDS system_lib
-)
-
-
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -103,7 +71,7 @@ catkin_package(
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   geometry_msgs#   sensor_msgs#   std_msgs
+#   geometry_msgs#   std_msgs
 # )
 
 ################################################
@@ -137,8 +105,8 @@ catkin_package(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES orb_slam3_msgs
-#  CATKIN_DEPENDS geometry_msgs roscpp rospy sensor_msgs std_msgs
+#  LIBRARIES orb_slam3_nav
+#  CATKIN_DEPENDS geometry_msgs roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -155,7 +123,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/orb_slam3_msgs.cpp
+#   src/${PROJECT_NAME}/orb_slam3_nav.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -166,7 +134,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/orb_slam3_msgs_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/orb_slam3_nav_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -230,10 +198,14 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_orb_slam3_msgs.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_orb_slam3_nav.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+catkin_install_python(PROGRAMS scripts/actionlib_client.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

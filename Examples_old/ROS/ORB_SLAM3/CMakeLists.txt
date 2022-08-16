@@ -44,7 +44,7 @@ MESSAGE(${OpenCV_VERSION})
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(PCL 1.8 REQUIRED)
-
+find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure)
 
 
 MESSAGE("Eigen 3 VERSION:")
@@ -74,6 +74,11 @@ ${PCL_LIBRARIES}
 
 include_directories(
 ${EIGEN3_INCLUDE_DIR}
+)
+
+generate_dynamic_reconfigure_options(
+  config/orb_slam3.cfg
+  #...
 )
 
 
@@ -120,6 +125,7 @@ ${LIBS}
 rosbuild_add_executable(RGBD2
 src/ros_rgbd_node.cc
 )
+add_dependencies(RGBD2 ${PROJECT_NAME} ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(RGBD2
 ${LIBS}

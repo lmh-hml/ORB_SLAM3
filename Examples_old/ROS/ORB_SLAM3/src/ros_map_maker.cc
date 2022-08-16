@@ -56,7 +56,6 @@ class ORB_SLAM3_Map
         if(new_width > occ_grid.info.width && new_height > occ_grid.info.height)
         {
 
-
         }
 
     }
@@ -301,7 +300,6 @@ class MapMaker
     std::map<int, ORB_SLAM3_Map> stored_maps;
 
 };
-
 
 ros::Publisher pose_pub;
 ros::Publisher pcl_pub;

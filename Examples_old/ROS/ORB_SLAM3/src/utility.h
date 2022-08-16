@@ -19,6 +19,13 @@
 #include <orb_slam3_msgs/orb_slam_map_msg.h>
 #include <orb_slam3_msgs/keyframe_pointcloud.h>
 
+#include <orb_slam3_msgs/MapPoint.h>
+#include <orb_slam3_msgs/KeyframeWithPoints.h>
+#include <orb_slam3_msgs/KeyframeWithIndices.h>
+#include <orb_slam3_msgs/Map.h>
+
+
+
 
 #include <tf/tf.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -351,4 +358,20 @@ void print_tf(geometry_msgs::Transform tf)
                     tf.translation.x, tf.translation.y,tf.translation.z);
     ROS_INFO(" * Rotation: {%.3f,%.3f,%.3f}",
                     RAD2DEG(roll), RAD2DEG(pitch), RAD2DEG(yaw));
+}
+
+void map_point_to_msg(ORB_SLAM3::MapPoint* map_point, orb_slam3_msgs::MapPoint& msg)
+{
+    msg.id = map_point->mnId;
+    Eigen::Vector3f v3f = map_point->GetWorldPos();
+    tf2::Vector3 point_translation(map_point->GetWorldPos()(0), map_point->GetWorldPos()(1), map_point->GetWorldPos()(2));
+    point_translation = tf_orb_to_ros * point_translation;
+    msg.position.x = point_translation.x();
+    msg.position.y = point_translation.y();
+    msg.position.z = point_translation.z();
+}
+
+void keyframe_to_msg(ORB_SLAM3::KeyFrame* kf, orb_slam3_msgs::KeyframeWithIndices msg)
+{
+    
 }
