@@ -136,6 +136,7 @@ class ORB_SLAM3_Map
     orb_slam3_msgs::orb_slam_map_msg map_msg;
 };
 
+
 class MapMaker
 {
     public:
@@ -171,8 +172,8 @@ class MapMaker
     void init_occupancy_grid(nav_msgs::OccupancyGrid& occ_grid, const std::string& frame_id, int width, int height, float resolution)
     {
         occ_grid.header.frame_id = frame_id;
-        occ_grid.info.width = (width);
-        occ_grid.info.height = (height);
+        occ_grid.info.width = width;
+        occ_grid.info.height = height;
         occ_grid.info.resolution = resolution;
         occ_grid.info.origin.position.x = -(occ_grid.info.width*occ_grid.info.resolution)/2;
         occ_grid.info.origin.position.y = -(occ_grid.info.height*occ_grid.info.resolution)/2;
@@ -235,6 +236,14 @@ class MapMaker
         map_pub.publish(height_map);   
     }
 
+    void update_map(size_t start_x, size_t start_y, size_t end_x, size_t end_y, cv::Mat& mat_grid)
+    {
+            if( (end_x>0 && end_x < height_map.info.width-1 ) && (end_y > 0 && end_y < height_map.info.height-1 ) )
+            {
+                for(cv::Point2d p : bresenham_line(start_x,start_y,end_x,end_y)) mat_grid.at<u_int16_t>(p.y,p.x) += 1;    
+            }
+    }
+
     void update_map_with_pose_array(const std::vector<geometry_msgs::Pose>& poses, const geometry_msgs::Pose& camera_pose, cv::Mat& mat_grid)
     {    
         int cam_x = floor(camera_pose.position.x / height_map.info.resolution + height_map_center.x);
@@ -249,17 +258,8 @@ class MapMaker
 
             size_t xh = floor(curr_pnt.x / height_map.info.resolution + height_map_center.x);
             size_t yh = floor(curr_pnt.y / height_map.info.resolution + height_map_center.y);
-            if( (xh>0 && xh < height_map.info.width-1 ) && (yh > 0 && yh < height_map.info.height-1 ))
-            {
-                //ROS_INFO("HeightMap: Point xyz: %f, %f; Inserting @ %d, %d", poses[i].position.x,poses[i].position.y,yh,xh);
-                occupied.at<u_int16_t>(yh,xh) += 1;
-                for(cv::Point2d p : bresenham_line(cam_x,cam_y,xh,yh))
-                {
-                    free.at<u_int16_t>(p.y,p.x) += 1;
-                }
-                // if(mat_grid.at<schar>(yh,xh)>100)mat_grid.at<schar>(yh,xh) = 100;
-                // if(mat_grid.at<schar>(yh,xh)<=0)mat_grid.at<schar>(yh,xh) = 0;
-            }
+            occupied.at<u_int16_t>(yh,xh) += 1;
+            update_map(cam_x, cam_y, xh,yh,mat_grid);
         }
 
         for(int i=0; i!=mat_grid.rows;i++)
@@ -273,7 +273,6 @@ class MapMaker
                 else mat_grid.at<schar>(i,j) = 50;
             }
         }
-
     }
 
     private:
@@ -323,9 +322,7 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
     MapMaker map_maker(1001,1001);
-    //ORB_SLAM_Mapper om(&nh);
     ros::Subscriber map_sub = nh.subscribe<orb_slam3_msgs::keyframe_pointcloud>("/ORB_SLAM3_RGBD/keyframe_pointcloud",5,kf_pcl_cb);
-    
     pose_pub = nh.advertise<geometry_msgs::PoseStamped>("kf_pose", 5);
     pcl_pub = nh.advertise<sensor_msgs::PointCloud2>("pcl",5);
 

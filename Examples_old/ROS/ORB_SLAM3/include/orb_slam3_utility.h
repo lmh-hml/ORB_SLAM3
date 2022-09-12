@@ -1,3 +1,4 @@
+#pragma once
 #include<iostream>
 #include<algorithm>
 #include<fstream>
@@ -85,43 +86,64 @@ void tf2_to_transform_and_pose_msg(const tf2::Transform& tf, geometry_msgs::Tran
     pose.orientation = transform.rotation;
 }
 
-void map_points_to_point_cloud(const std::vector<ORB_SLAM3::MapPoint*> map_points, sensor_msgs::PointCloud2& cloud, std::string map_frame_id="map" )
+bool map_points_to_point_cloud(const std::vector<ORB_SLAM3::MapPoint*> map_points, sensor_msgs::PointCloud2& cloud, std::string map_frame_id="map" )
+{
+    if(map_points.empty()) return false;
+
+    const int num_channels = 3;
+    cloud.header.frame_id = "orb_slam3_map";
+    cloud.height = 1;
+    cloud.width = map_points.size();
+    cloud.is_bigendian = false;
+    cloud.is_dense = true;
+    cloud.point_step = num_channels * sizeof(float);
+    cloud.row_step = cloud.point_step * cloud.width;
+    cloud.fields.resize(num_channels);
+
+    std::string channel_id[] = { "x", "y", "z"};
+
+    for (int i = 0; i < num_channels; i++)
     {
-        const int num_channels = 3;
-        cloud.header.frame_id = "orb_slam3_map";
-        cloud.height = 1;
-        cloud.width = map_points.size();
-        cloud.is_bigendian = false;
-        cloud.is_dense = true;
-        cloud.point_step = num_channels * sizeof(float);
-        cloud.row_step = cloud.point_step * cloud.width;
-        cloud.fields.resize(num_channels);
+        cloud.fields[i].name = channel_id[i];
+        cloud.fields[i].offset = i * sizeof(float);
+        cloud.fields[i].count = 1;
+        cloud.fields[i].datatype = sensor_msgs::PointField::FLOAT32;
+    }
 
-        std::string channel_id[] = { "x", "y", "z"};
+    cloud.data.resize(cloud.row_step * cloud.height);
 
-        for (int i = 0; i < num_channels; i++)
+    unsigned char *cloud_data_ptr = &(cloud.data[0]);
+
+    for (unsigned int i = 0; i < cloud.width; i++)
+    {
+        if (map_points[i])
         {
-            cloud.fields[i].name = channel_id[i];
-            cloud.fields[i].offset = i * sizeof(float);
-            cloud.fields[i].count = 1;
-            cloud.fields[i].datatype = sensor_msgs::PointField::FLOAT32;
-        }
-
-        cloud.data.resize(cloud.row_step * cloud.height);
-
-        unsigned char *cloud_data_ptr = &(cloud.data[0]);
-
-        for (unsigned int i = 0; i < cloud.width; i++)
-        {
-            if (map_points[i])
-            {
-                tf2::Vector3 point_translation(map_points[i]->GetWorldPos()(0), map_points[i]->GetWorldPos()(1), map_points[i]->GetWorldPos()(2));
-                point_translation = tf_orb_to_ros * point_translation;
-                float data_array[num_channels] = {point_translation.x(), point_translation.y(), point_translation.z()};
-                memcpy(cloud_data_ptr+(i*cloud.point_step), data_array, num_channels*sizeof(float));
-            }
+            tf2::Vector3 point_translation(map_points[i]->GetWorldPos()(0), map_points[i]->GetWorldPos()(1), map_points[i]->GetWorldPos()(2));
+            point_translation = tf_orb_to_ros * point_translation;
+            float data_array[num_channels] = {point_translation.x(), point_translation.y(), point_translation.z()};
+            memcpy(cloud_data_ptr+(i*cloud.point_step), data_array, num_channels*sizeof(float));
         }
     }
+    return true;
+}
+
+
+
+void map_point_to_pose_msg(ORB_SLAM3::MapPoint* mp, geometry_msgs::Pose& pose)
+{
+    tf2::Vector3 point_translation(mp->GetWorldPos()(0), mp->GetWorldPos()(1), mp->GetWorldPos()(2));
+    point_translation = tf_orb_to_ros * point_translation;
+    pose.position.x = point_translation.x();
+    pose.position.y = point_translation.y();
+    pose.position.z = point_translation.z();
+}
+
+tf2::Vector3  map_point_to_tf_vect3(ORB_SLAM3::MapPoint* mp)
+{
+    tf2::Vector3 point_translation(mp->GetWorldPos()(0), mp->GetWorldPos()(1), mp->GetWorldPos()(2));
+    point_translation = tf_orb_to_ros * point_translation;
+    return point_translation;
+}
 
 void map_points_to_pose_array_msg(std::vector<ORB_SLAM3::MapPoint *> map_points, geometry_msgs::PoseArray& pose_array)
 {
@@ -130,15 +152,12 @@ void map_points_to_pose_array_msg(std::vector<ORB_SLAM3::MapPoint *> map_points,
         if(mp)
         {
             geometry_msgs::Pose pose;
-            tf2::Vector3 point_translation(mp->GetWorldPos()(0), mp->GetWorldPos()(1), mp->GetWorldPos()(2));
-            point_translation = tf_orb_to_ros * point_translation;
-            pose.position.x = point_translation.x();
-            pose.position.y = point_translation.y();
-            pose.position.z = point_translation.z();
+            map_point_to_pose_msg(mp,pose);
             pose_array.poses.push_back(pose);
         }
     }
 }
+
 
 void point_cloud_to_pose_array(const sensor_msgs::PointCloud2& pcl,  geometry_msgs::PoseArray& pose_array)
 {
@@ -305,13 +324,13 @@ void orb_slam_map_to_msg(ORB_SLAM3::Map* map, orb_slam3_msgs::orb_slam_map_msg& 
 {
     geometry_msgs::PoseArray pose_array;
     {
-        unique_lock<std::mutex> lock(map->mMutexMapUpdate);//Prevent map updates while getting map data
+        std::vector<ORB_SLAM3::KeyFrame *> keyframes;
         //Set map id
         msg.id = map->GetId();
         msg.init_keyframe_id = map->GetInitKFid();
-
         //Set up keyframes
-        auto keyframes = map->GetAllKeyFrames();
+        keyframes = map->GetAllKeyFrames();
+        
         sort(keyframes.begin(), keyframes.end(), ORB_SLAM3::KeyFrame::lId);
 
         for(ORB_SLAM3::KeyFrame* kf : keyframes)
@@ -369,9 +388,4 @@ void map_point_to_msg(ORB_SLAM3::MapPoint* map_point, orb_slam3_msgs::MapPoint& 
     msg.position.x = point_translation.x();
     msg.position.y = point_translation.y();
     msg.position.z = point_translation.z();
-}
-
-void keyframe_to_msg(ORB_SLAM3::KeyFrame* kf, orb_slam3_msgs::KeyframeWithIndices msg)
-{
-    
 }

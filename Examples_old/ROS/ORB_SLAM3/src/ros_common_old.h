@@ -2,6 +2,7 @@
 #include<algorithm>
 #include<fstream>
 #include<chrono>
+#include<thread>
 
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
@@ -23,7 +24,7 @@
 #include <orb_slam3_msgs/keyframe_msg.h>
 #include <orb_slam3_msgs/keyframe_pointcloud.h>
 #include <ORB_SLAM3/orb_slam3Config.h>
-#include "utility.h"
+#include "../include/orb_slam3_utility.h"
 
 
 #include <tf/tf.h>
@@ -37,6 +38,11 @@
 #include<opencv2/core/core.hpp>
 
 #include "../../include/System.h"
+
+#include "../include/pcl_map_maker.h"
+
+typedef pcl::PointCloud<pcl::PointXYZ> Pointcloud;
+
 
 class ORB_ROS_Node
 {
@@ -67,6 +73,7 @@ class ORB_ROS_Node
         image_pub = image_transport->advertise(node_name+"/debug_image",10);
         kf_pcl_pub = node_handle->advertise<orb_slam3_msgs::keyframe_pointcloud>(node_name+"/keyframe_pointcloud",5);
         tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",5);
+        grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",5);
 
         save_map_sub = node_handle->subscribe<std_msgs::Bool>(node_name+"/save_map",1, &ORB_ROS_Node::save_map_cb, this);
 
@@ -80,12 +87,21 @@ class ORB_ROS_Node
         reconfig_callback = boost::bind(&ORB_ROS_Node::config_cb, this, _1, _2);
         server.setCallback(reconfig_callback);
 
-        tf2_base_link_to_camera = lookup_transform_duration(base_link_id,camera_frame_id, ros::Time(), ros::Duration(3.0));
+        tf2_base_link_to_camera_origin = lookup_transform_duration(base_link_id,camera_frame_id, ros::Time(), ros::Duration(3.0));
     }
 
     void init_ORB_SLAM(ORB_SLAM3::System* system)
     {
             orb_system =  system;
+            cout<<"RUNNING MAPPER THREAD!!!!!!!!!!!!!!!!!!!!!"<<endl;
+            mapper.set_publisher(&grid_pub);
+            mapper_thread = new std::thread(&ORB_SLAM3_Mapper::run,&mapper);
+    }
+
+    void stop()
+    {
+        printf("Stopping!!!!!!!!!!!!!!!!!!!!!!");
+        mapper.stop();
     }
 
     void publish_current_tracked_points(ros::Time frame_time)
@@ -112,12 +128,21 @@ class ORB_ROS_Node
         map_points_to_point_cloud(map_points, cloud);
 
         //Transform the map points from orb_slam3's frame to the map frame
-        auto eigen = tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera));
+        auto eigen = tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin));
         pcl_ros::transformPointCloud( eigen.matrix().cast<float>(), cloud, cloud_out );
         cloud_out.header.stamp = frame_time;
         cloud_out.header.frame_id = "map";
-
         global_map_points_pub.publish(cloud_out);
+
+
+        Pointcloud::Ptr point_cloud(new Pointcloud);
+        pcl::fromROSMsg<pcl::PointXYZ>(cloud_out, *point_cloud);
+
+        pcl::PointXYZ min, max;
+        pcl::getMinMax3D<pcl::PointXYZ>(*point_cloud,min,max);
+        printf("The map's min: %.3f, %.2f, %.2f\n", min.x, min.y, min.z);
+        printf("The map's max: %.3f, %.2f, %.2f\n", max.x, max.y, max.z);
+
     }
 
     void publish_orb_slam_debug_image(ros::Time frame_time)
@@ -139,9 +164,6 @@ class ORB_ROS_Node
 
              //Publish Keyframe map points
             auto map_points = kf->GetMapPoints();
-            std::vector<ORB_SLAM3::MapPoint*> map_points_vect(map_points.begin(), map_points.end());
-            sensor_msgs::PointCloud2 pcl;
-            pcl.header.stamp = frame_time;
             std::vector<ORB_SLAM3::MapPoint*> vec(map_points.begin(), map_points.end());
             map_points_to_pose_array_msg(vec, keyframe_points_and_poses);
 
@@ -168,7 +190,7 @@ class ORB_ROS_Node
         //Since ORB_SLAM cull keyframes, it is possible that there are LESS keyframes this frame than previous frames
         size_t current_size = keyframes.size();
         long difference = current_size - last_kf_size;
-        //printf("Current/Last kf size: %d/%d\n", current_size,last_kf_size);
+        printf("Current/Last kf size: %d/%d\n", current_size,last_kf_size);
         last_kf_size = current_size;
 
         if(difference<0)return;
@@ -194,41 +216,23 @@ class ORB_ROS_Node
 
     void check_atlas_status(ORB_SLAM3::Atlas* atlas, ORB_SLAM3::Map* current_map)
     {
-        //Checks if:
-        //Current map has changes since last frame
-        //Number of maps in atlas has changed
-        //Current map's id has changed
+        static int last_map_id = -1;
+        static size_t last_map_count = 0;
 
         bool map_changed = orb_system->MapChanged();
         if(map_changed)ROS_INFO("Map changed!");
 
-        size_t current_map_count = atlas->GetAllMaps().size();
-        if(current_map_count!=last_map_count)
-        {
-            ROS_INFO("Number of maps has changed from %zu to %zu", last_map_count, current_map_count);
-            last_map_count = current_map_count;
-            map_count_changed = true;
-        }
-        else
-        {
-            map_count_changed = false;
-        }
+        size_t current_map_count = atlas->CountMaps();
+        map_count_changed = (current_map_count!=last_map_id);
+        last_map_count = current_map_count;
 
         size_t current_map_id = 0;
-        {
-            unique_lock<std::mutex> lock(current_map->mMutexMapUpdate);
-            current_map_id = current_map->GetId();
-        }
-        if(current_map_id!=last_map_id)
-        {
-            ROS_INFO("Map id changed to %zu!",current_map_id);
-            map_id_changed = true;
-            last_map_id = current_map_id;
-        }
-        else
-        {
-            map_id_changed = false;
-        }
+        current_map_id = current_map->GetId();
+        map_id_changed = (current_map_id!=last_map_id);
+        last_map_id = current_map_id;
+
+        if(map_changed||map_id_changed||map_count_changed)
+        ROS_INFO("Current Atlas State: Changed: %d, Count %zu, current map: %zu", map_changed, current_map_count, current_map_id);
     }
     
     int update_current_position( Sophus::SE3f position)
@@ -260,7 +264,10 @@ class ORB_ROS_Node
     {
             ORB_SLAM3::Atlas* atlas = orb_system->GetAtlas();
             ORB_SLAM3::Map* map = atlas->GetCurrentMap();
+            if( map!=NULL && !map->IsBad() )
+                mapper.queue_map(map);
             std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
+            
 
             check_atlas_status(atlas,map);
             int tracking_state = update_current_position(position);
@@ -269,7 +276,6 @@ class ORB_ROS_Node
             {
                 std::vector<ORB_SLAM3::KeyFrame*> all_keyframes = map->GetAllKeyFrames();
                 sort(all_keyframes.begin(), all_keyframes.end(), ORB_SLAM3::KeyFrame::lId);
-                //publish_latest_keyframe_pose_and_points(current_frame_time,all_keyframes);
                 publish_current_transform(current_frame_time);
             }
 
@@ -302,6 +308,7 @@ class ORB_ROS_Node
     ros::Publisher orb_slam_map_pub;
     ros::Publisher kf_pcl_pub;
     ros::Publisher tracking_state_pub;
+    ros::Publisher grid_pub;
 
     ros::Subscriber goal_sub;
     ros::Subscriber save_map_sub;
@@ -323,7 +330,7 @@ class ORB_ROS_Node
     tf2::Transform tf2_map_to_target;
 
     //Looked up upon node initialization. Used to determine the tf from 2D map to orb_slam3's map origin
-    tf2::Transform tf2_base_link_to_camera;
+    tf2::Transform tf2_base_link_to_camera_origin;
 
     //Camera position from orb_slam3. Updates every time an image is processed.
     tf2::Transform tf2_orb_slam3_map_to_camera;
@@ -334,6 +341,10 @@ class ORB_ROS_Node
     size_t last_map_id;
     size_t last_map_count;
     bool map_id_changed, map_count_changed, is_lost;
+
+    ORB_SLAM3_Mapper mapper;
+    std::thread* mapper_thread;
+    
 
 
     tf2::Transform get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id)
@@ -363,7 +374,6 @@ class ORB_ROS_Node
         pose.orientation = tf2::toMsg(tf.getRotation());    
         return pose;
     }
-
 
     tf2::Stamped<tf2::Transform> lookup_transform(const string& src, const string& target, ros::Time time=ros::Time())
     {

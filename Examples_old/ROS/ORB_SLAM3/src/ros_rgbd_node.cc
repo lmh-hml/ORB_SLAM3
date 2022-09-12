@@ -33,13 +33,13 @@
 #include<opencv2/core/core.hpp>
 
 #include"../../include/System.h"
-#include "ros_common.h"
+#include "../include/ros_common.h"
 
 using namespace std;
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
 
 
-class RGBD:ORB_ROS_Node
+class RGBD: public ORB_ROS_Node
 {
     public:
 
@@ -89,9 +89,13 @@ class RGBD:ORB_ROS_Node
 };
 
 ORB_SLAM3::System* orb_system;
+RGBD* rgbd;
+
+
 void sigint_handler(int sig)
 {
     ROS_INFO("SHUTTING DOWN ORB SLAM");
+    rgbd->stop();
     orb_system->Shutdown();
     //orb_system->SaveAtlas(ORB_SLAM3::System::FileType::BINARY_FILE);
     orb_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
@@ -101,7 +105,7 @@ void sigint_handler(int sig)
 
 int main(int argc, char **argv)
 {
-    ROS_INFO("STARTING ORB_SLAM NODE!...");
+    ROS_INFO("ORB_SLAM NODE!...");
     ros::init(argc, argv, "RGBD");
     ros::start();
 
@@ -122,10 +126,9 @@ int main(int argc, char **argv)
     orb_system = &SLAM;
     signal(SIGINT,sigint_handler);
 
-    RGBD rgbd("ORB_SLAM3_RGBD", &SLAM, &nh);
+    rgbd = new RGBD("ORB_SLAM3_RGBD", &SLAM, &nh);
 
     ros::spin();
-
     // Stop all threads
     //SLAM.Shutdown();
 
