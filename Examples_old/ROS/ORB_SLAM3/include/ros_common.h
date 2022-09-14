@@ -20,12 +20,8 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int16.h>
 
-
-#include <orb_slam3_msgs/keyframe_msg.h>
-#include <orb_slam3_msgs/keyframe_pointcloud.h>
 #include <ORB_SLAM3/orb_slam3Config.h>
 #include "../include/orb_slam3_utility.h"
-
 
 #include <tf/tf.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -88,14 +84,8 @@ class ORB_ROS_Node
     std::string odom_frame_id;
     ros::Time current_frame_time;
 
-    ros::Publisher lastest_kf_map_points_pub;
     ros::Publisher global_map_points_pub;
     ros::Publisher current_pose_pub;
-    ros::Publisher kf_pose_array_pub;
-    ros::Publisher initial_kf_pose_pub;
-    ros::Publisher orb_slam_goal_pub;
-    ros::Publisher orb_slam_map_pub;
-    ros::Publisher kf_pcl_pub;
     ros::Publisher tracking_state_pub;
     ros::Publisher grid_pub;
 
@@ -115,9 +105,6 @@ class ORB_ROS_Node
     geometry_msgs::Transform   camera_to_goal;
     geometry_msgs::Transform   map_to_camera_msg;
 
-    //Transform from 2D map to target frame
-    tf2::Transform tf2_map_to_target;
-
     //Looked up upon node initialization. Used to determine the tf from 2D map to orb_slam3's map origin
     tf2::Transform tf2_base_link_to_camera_origin;
 
@@ -133,6 +120,7 @@ class ORB_ROS_Node
 
     ORB_SLAM3_Mapper mapper;
     std::thread* mapper_thread;
+    bool use_mapper;
     
     tf2::Transform get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id);
     

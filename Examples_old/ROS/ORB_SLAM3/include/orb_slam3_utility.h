@@ -25,9 +25,6 @@
 #include <orb_slam3_msgs/KeyframeWithIndices.h>
 #include <orb_slam3_msgs/Map.h>
 
-
-
-
 #include <tf/tf.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>

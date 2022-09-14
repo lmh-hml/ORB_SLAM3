@@ -2,7 +2,7 @@
 
 
 ORB_ROS_Node::ORB_ROS_Node(std::string name, ORB_SLAM3::System* system, ros::NodeHandle* nh ):
-map_changed(false),map_id_changed(false),map_count_changed(false)
+map_changed(false),map_id_changed(false),map_count_changed(false),use_mapper(false)
 {
     node_handle = nh;
     image_transport = new image_transport::ImageTransport(*node_handle);
@@ -18,15 +18,9 @@ map_changed(false),map_id_changed(false),map_count_changed(false)
 void ORB_ROS_Node::init_ros()
 {
     ROS_INFO("INIT ROS!!");
-    lastest_kf_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/kf_map_points",5);
     global_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/global_map_points",5);
     current_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/pose",5);
-    kf_pose_array_pub = node_handle->advertise<geometry_msgs::PoseArray>(node_name+"/kf_pose_array",5);
-    initial_kf_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/initial_kf_pose",5);
-    orb_slam_goal_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/goal",5);
-    orb_slam_map_pub = node_handle->advertise<orb_slam3_msgs::orb_slam_map_msg>(node_name+"/orb_slam3_map_msg",5);
     image_pub = image_transport->advertise(node_name+"/debug_image",10);
-    kf_pcl_pub = node_handle->advertise<orb_slam3_msgs::keyframe_pointcloud>(node_name+"/keyframe_pointcloud",5);
     tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",5);
     grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",5);
 
@@ -38,6 +32,7 @@ void ORB_ROS_Node::init_ros()
     node_handle->param<std::string>("target_frame_id", target_frame_id, "orb_pose");
     node_handle->param<std::string>("base_link_id", base_link_id, "base_footprint");
     node_handle->param<std::string>("odom_frame_id", odom_frame_id, "odom");
+    node_handle->param<bool>("use_mapper", use_mapper, false);
 
     reconfig_callback = boost::bind(&ORB_ROS_Node::config_cb, this, _1, _2);
     server.setCallback(reconfig_callback);
@@ -48,24 +43,18 @@ void ORB_ROS_Node::init_ros()
 void ORB_ROS_Node::init_ORB_SLAM(ORB_SLAM3::System* system)
 {
         orb_system =  system;
-        cout<<"RUNNING MAPPER THREAD!!!!!!!!!!!!!!!!!!!!!"<<endl;
-        mapper.set_publisher(&grid_pub);
-        mapper_thread = new std::thread(&ORB_SLAM3_Mapper::run,&mapper);
+        if(use_mapper)
+        {
+            cout<<"RUNNING MAPPER THREAD!!!!!!!!!!!!!!!!!!!!!"<<endl;
+            mapper.set_publisher(&grid_pub);
+            mapper_thread = new std::thread(&ORB_SLAM3_Mapper::run,&mapper);
+        }
 }
 
 void ORB_ROS_Node::stop()
 {
     printf("Stopping!!!!!!!!!!!!!!!!!!!!!!");
     mapper.stop();
-}
-
-void ORB_ROS_Node::publish_current_tracked_points(ros::Time frame_time)
-{
-    std::vector<ORB_SLAM3::MapPoint*> map_points = orb_system->GetTrackedMapPoints();
-    sensor_msgs::PointCloud2 cloud;
-    cloud.header.stamp = frame_time;
-    map_points_to_point_cloud(map_points, cloud);
-    lastest_kf_map_points_pub.publish(cloud);
 }
 
 void ORB_ROS_Node::publish_current_transform(ros::Time frame_time)
@@ -99,58 +88,6 @@ void ORB_ROS_Node::publish_orb_slam_debug_image(ros::Time frame_time)
     header.frame_id = camera_frame_id;
     const sensor_msgs::ImagePtr rendered_image_msg = cv_bridge::CvImage(header, "bgr8", img).toImageMsg();
     image_pub.publish(rendered_image_msg);
-}
-
-void ORB_ROS_Node::publish_all_keyframe_pose_and_points(ros::Time frame_time, const std::vector<ORB_SLAM3::KeyFrame*>& keyframes)
-{    
-    for(ORB_SLAM3::KeyFrame* kf : keyframes)
-    {
-        geometry_msgs::PoseArray keyframe_points_and_poses;
-        keyframe_points_and_poses.header.frame_id = "map";
-
-            //Publish Keyframe map points
-        auto map_points = kf->GetMapPoints();
-        std::vector<ORB_SLAM3::MapPoint*> vec(map_points.begin(), map_points.end());
-        map_points_to_pose_array_msg(vec, keyframe_points_and_poses);
-
-        //Publish Keyframe camera pose
-        Sophus::SE3f kf_pose = kf->GetPose();
-        geometry_msgs::Pose pose;
-        geometry_msgs::Transform tf;
-        tf2_to_transform_and_pose_msg(orb_slam_pose_to_tf(kf_pose), tf, pose);
-        keyframe_points_and_poses.poses.push_back(pose);
-
-        //Publish
-        kf_pose_array_pub.publish(keyframe_points_and_poses);
-    }
-}
-
-void ORB_ROS_Node::publish_latest_keyframe_pose_and_points(ros::Time frame_time, const std::vector<ORB_SLAM3::KeyFrame*>& keyframes)
-{
-    //The LAST pose of this array must be the pose of the keyframe.
-    geometry_msgs::PoseArray keyframe_points_and_poses;
-    keyframe_points_and_poses.header.frame_id = "map";
-
-    if(map_id_changed)return;
-    
-    //Since ORB_SLAM cull keyframes, it is possible that there are LESS keyframes this frame than previous frames
-    size_t current_size = keyframes.size();
-    long difference = current_size - last_kf_size;
-    printf("Current/Last kf size: %d/%d\n", current_size,last_kf_size);
-    last_kf_size = current_size;
-
-    if(difference<0)return;
-
-    for( size_t i = difference; i!= 0; i--)
-    {
-        auto last_kf = keyframes.at(keyframes.size()-i);
-        orb_slam3_msgs::keyframe_pointcloud kf_pcl;
-        kf_pcl.header.frame_id = orb_slam3_map_frame_id;
-        kf_pcl.header.stamp = current_frame_time;
-
-        keyframe_to_keyframe_pointcloud_msg(last_kf, kf_pcl);
-        kf_pcl_pub.publish(kf_pcl);
-    }
 }
 
 void ORB_ROS_Node::publish_tracking_state(ros::Time frame_time, int tracking_state)
@@ -220,14 +157,6 @@ void ORB_ROS_Node::update(Sophus::SE3f position, ros::Time current_frame_time)
         if( map!=NULL && !map->IsBad())
             mapper.queue_map(map);
 
-        // size_t last_kf_origin = initial_kf_id;
-
-
-        //  tf2::Transform map_tf = orb_slam_pose_to_tf(map->GetOriginKF()->GetPose());
-        //  initial_kf_id = map->GetOriginKF()->mnId;
-        // printf("Map origin Id: %d\n",initial_kf_id);
-        // printf("Map origin: %.2f, %.2f %.2f, R: %.2f\n",map_tf.getOrigin().getX(),map_tf.getOrigin().getY(),map_tf.getOrigin().getZ(),map_tf.getRotation().getAngle());
-
         if(tracking_state==2)
         {
             std::vector<ORB_SLAM3::KeyFrame*> all_keyframes = map->GetAllKeyFrames();
@@ -239,7 +168,6 @@ void ORB_ROS_Node::update(Sophus::SE3f position, ros::Time current_frame_time)
         publish_current_global_map_points(current_frame_time, map_points);
         publish_orb_slam_debug_image(current_frame_time);
         publish_tracking_state(current_frame_time,tracking_state);
-
 }
 
 tf2::Transform ORB_ROS_Node::get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id)
@@ -316,6 +244,6 @@ void ORB_ROS_Node::save_map_cb(const std_msgs::Bool::ConstPtr& msg)
 
 void ORB_ROS_Node::config_cb(const ORB_SLAM3::orb_slam3Config& config, uint32_t level)
 {
-if(config.Localization_mode) orb_system->ActivateLocalizationMode();
-else orb_system->DeactivateLocalizationMode();
+    if(config.Localization_mode) orb_system->ActivateLocalizationMode();
+    else orb_system->DeactivateLocalizationMode();
 }
