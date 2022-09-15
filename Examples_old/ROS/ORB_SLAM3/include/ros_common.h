@@ -121,6 +121,8 @@ class ORB_ROS_Node
     ORB_SLAM3_Mapper mapper;
     std::thread* mapper_thread;
     bool use_mapper;
+    bool publish_pointcloud;
+    bool publish_image;
     
     tf2::Transform get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id);
     

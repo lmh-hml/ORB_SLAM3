@@ -2,7 +2,8 @@
 
 
 ORB_ROS_Node::ORB_ROS_Node(std::string name, ORB_SLAM3::System* system, ros::NodeHandle* nh ):
-map_changed(false),map_id_changed(false),map_count_changed(false),use_mapper(false)
+map_changed(false),map_id_changed(false),map_count_changed(false),use_mapper(false),publish_pointcloud(false),
+publish_image(false)
 {
     node_handle = nh;
     image_transport = new image_transport::ImageTransport(*node_handle);
@@ -33,6 +34,8 @@ void ORB_ROS_Node::init_ros()
     node_handle->param<std::string>("base_link_id", base_link_id, "base_footprint");
     node_handle->param<std::string>("odom_frame_id", odom_frame_id, "odom");
     node_handle->param<bool>("use_mapper", use_mapper, false);
+    node_handle->param<bool>("publish_pointcloud", publish_pointcloud,false);
+    node_handle->param<bool>("publish_image", publish_image,false);
 
     reconfig_callback = boost::bind(&ORB_ROS_Node::config_cb, this, _1, _2);
     server.setCallback(reconfig_callback);
@@ -148,25 +151,23 @@ void ORB_ROS_Node::update(Sophus::SE3f position, ros::Time current_frame_time)
         ORB_SLAM3::Atlas* atlas = orb_system->GetAtlas();
         ORB_SLAM3::Map* map = atlas->GetCurrentMap();
 
-        std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
-
         check_atlas_status(atlas,map);
         int tracking_state = update_current_position(position);
 
-
-        if( map!=NULL && !map->IsBad())
+        if( use_mapper && map!=NULL && !map->IsBad())
             mapper.queue_map(map);
-
+        
         if(tracking_state==2)
         {
-            std::vector<ORB_SLAM3::KeyFrame*> all_keyframes = map->GetAllKeyFrames();
-            sort(all_keyframes.begin(), all_keyframes.end(), ORB_SLAM3::KeyFrame::lId);
             publish_current_transform(current_frame_time);
-            printf("First kf id is: %zu\n",all_keyframes[0]->mnId);
         }
 
-        publish_current_global_map_points(current_frame_time, map_points);
-        publish_orb_slam_debug_image(current_frame_time);
+        if(publish_pointcloud)
+        {
+            std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
+            publish_current_global_map_points(current_frame_time,map_points);
+        }
+        if(publish_image)publish_orb_slam_debug_image(current_frame_time);
         publish_tracking_state(current_frame_time,tracking_state);
 }
 
