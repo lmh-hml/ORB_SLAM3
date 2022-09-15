@@ -57,8 +57,11 @@ class RGBD: public ORB_ROS_Node
         message_filters::Subscriber<sensor_msgs::Image>* depth_sub;
         message_filters::Synchronizer<sync_pol>* sync ;
 
+
         void GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD)
-        {
+        {   
+            auto start = std::chrono::high_resolution_clock::now();
+
             // Copy the ros image message to cv::Mat.
             cv_bridge::CvImageConstPtr cv_ptrRGB;
             try
@@ -83,6 +86,10 @@ class RGBD: public ORB_ROS_Node
             }
             Sophus::SE3f position = orb_system->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
             update(position, cv_ptrRGB->header.stamp);
+
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start).count();
+            ROS_INFO("Latest callback took this long: %ld ms",duration);
         }
 
 
