@@ -11,8 +11,8 @@ publish_image(false)
     node_name = name;
     initial_kf_id = -1;
     last_kf_size = 0;
-    init_ORB_SLAM(system);
     init_ros();
+    init_ORB_SLAM(system);
 
 };
 
