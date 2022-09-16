@@ -123,6 +123,8 @@ class ORB_ROS_Node
     bool use_mapper;
     bool publish_pointcloud;
     bool publish_image;
+
+    double tf_tolerance;
     
     tf2::Transform get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id);
     

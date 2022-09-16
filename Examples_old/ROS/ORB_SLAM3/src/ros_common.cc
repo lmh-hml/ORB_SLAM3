@@ -3,7 +3,7 @@
 
 ORB_ROS_Node::ORB_ROS_Node(std::string name, ORB_SLAM3::System* system, ros::NodeHandle* nh ):
 map_changed(false),map_id_changed(false),map_count_changed(false),use_mapper(false),publish_pointcloud(false),
-publish_image(false)
+publish_image(false),tf_tolerance(0.1)
 {
     node_handle = nh;
     image_transport = new image_transport::ImageTransport(*node_handle);
@@ -36,6 +36,7 @@ void ORB_ROS_Node::init_ros()
     node_handle->param<bool>("use_mapper", use_mapper, false);
     node_handle->param<bool>("publish_pointcloud", publish_pointcloud,false);
     node_handle->param<bool>("publish_image", publish_image,false);
+    node_handle->param<double>("tf_tolerance", tf_tolerance,0.1);
 
     reconfig_callback = boost::bind(&ORB_ROS_Node::config_cb, this, _1, _2);
     server.setCallback(reconfig_callback);
@@ -184,7 +185,7 @@ void ORB_ROS_Node::send_transform(tf2::Transform tf,const std::string& src, cons
     geometry_msgs::TransformStamped msg;
     msg.header.frame_id = src;
     msg.child_frame_id = target;
-    msg.header.stamp = time + ros::Duration(0.1);
+    msg.header.stamp = time + ros::Duration(tf_tolerance);
     msg.transform = tf2::toMsg(tf);
     tf_broadcaster.sendTransform(msg);
 }
