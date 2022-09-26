@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.4.6)
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+project(ORB_SLAM3)
 rosbuild_init()
 
 
@@ -43,14 +44,13 @@ MESSAGE(${OpenCV_VERSION})
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
-find_package(PCL REQUIRED)
-find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure pcl_ros)
+find_package(PCL 1.8 REQUIRED)
+find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure pcl_ros nodelet)
 
 
 MESSAGE("Eigen 3 VERSION:")
 MESSAGE(${Eigen3_VERSION})
 
-MESSAGE(${PCL_INCLUDE_DIRS})
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
@@ -163,13 +163,23 @@ target_link_libraries(Stereo_Inertial
 ${LIBS}
 )
 
-rosbuild_add_executable(map_maker2
-src/occupancy_grid.cc
+# rosbuild_add_executable(map_maker2
+# src/occupancy_grid.cc
+# )
+
+# target_link_libraries(map_maker2
+# ${LIBS}
+# )
+
+rosbuild_add_library(RGBDNodelet
+src/ros_rgbd_nodelet.cc
+)
+target_link_libraries(RGBDNodelet
+${LIBS} pcl_map_maker ros_common
 )
 
-target_link_libraries(map_maker2
-${LIBS}
+install(
+   FILES nodelet_plugins.xml
+   DESTINATION ${PROJECT_SOURCE_DIR}/devel/share
 )
-
-
 

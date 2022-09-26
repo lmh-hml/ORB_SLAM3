@@ -2,6 +2,8 @@
 
 using namespace pcl;
 
+
+
 ORB_SLAM3_Mapper::ORB_SLAM3_Mapper():
 map_ptr(NULL),occupancy_grid(1000,1000,0.01),grid_pub(NULL),first_map(false),free_thresh(5),height_thresh(10.0),time_thresh(5)
 {

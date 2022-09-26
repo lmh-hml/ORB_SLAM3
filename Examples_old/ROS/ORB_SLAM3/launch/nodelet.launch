@@ -1,6 +1,7 @@
 <launch>
 
     <arg name="settings" default="r200_rgbd"/>
+    <arg name="manager_name" default="manager"/>
 
     <arg name="map_frame" default="orb_slam3_map"/>
     <arg name="target_frame" default="odom"/>
@@ -18,11 +19,16 @@
     <param name="use_mapper" type="boolean" value="true"/>
     <param name="publish_pointcloud" type="boolean" value="true"/>
     <param name="publish_image" type="boolean" value="true"/>
+    <param name="path_to_vocab" type="string" value="$(arg vocab_path)"/>
+    <param name="path_to_settings" type="string" value="$(arg settings_path)"/>
 
+  <node pkg="nodelet" type="nodelet" name="$(arg manager_name)"  args="manager" output="screen"/>
 
-    <node pkg="ORB_SLAM3" name="RGBD" type="RGBD2" args="$(arg vocab_path) /home/lmh/ORB_SLAM3/Examples_old/RGB-D/$(arg settings).yaml" output="screen" >
+  <node pkg="nodelet" type="nodelet" name="RGBDNodelet" args="load RGBDNodelet $(arg manager_name)" output="screen" launch-prefix="gdb -ex run --args">
         <remap from="/camera/depth_registered/image_raw" to="/camera/depth/image_raw"/>
         <remap from="/camera/rgb/image_raw" to="/camera/rgb/image_raw"/>
-    </node>
+  </node>
+
+
 
 </launch>

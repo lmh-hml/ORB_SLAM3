@@ -12,7 +12,7 @@
   <depend package="orb_slam3_msgs"/>
   <depend package="pcl_ros"/>
   <depend package="pcl_conversions"/>
-
+  <depend package="nodelet"/>
 
 
   <run_depend>orb_slam3_msgs</run_depend>
@@ -22,6 +22,15 @@
   <exec_depend>message_runtime</exec_depend>
 
   <build_depend>dynamic_reconfigure</build_depend>
+
+  <run_depend>pluginlib</run_depend>
+  <build_depend>pluginlib</build_depend>
+  <build_depend>nodelet</build_depend>
+  <run_depend>nodelet</run_depend>
+  <exec_depend>nodelet</exec_depend>
+  <export>
+    <nodelet plugin="${prefix}/nodelet_plugins.xml" />
+  </export>
 
 </package>
 

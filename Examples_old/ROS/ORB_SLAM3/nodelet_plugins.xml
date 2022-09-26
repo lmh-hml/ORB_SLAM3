@@ -1,0 +1,7 @@
+<library path="lib/libRGBDNodelet">
+  <class name="RGBDNodelet" type="RGBDNodelet" base_class_type="nodelet::Nodelet">
+  <description>
+  Nodelet for ORB_SLAM RGBD
+  </description>
+  </class>
+</library>
