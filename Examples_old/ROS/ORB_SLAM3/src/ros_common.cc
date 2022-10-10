@@ -1,7 +1,7 @@
 #include "../include/ros_common.h"
 
 
-ORB_ROS_Node::ORB_ROS_Node(std::string name, ORB_SLAM3::System* system, ros::NodeHandle* nh ):
+ORB_ROS_Node::ORB_ROS_Node(std::string name, ORB_SLAM3::System::eSensor sensor, ros::NodeHandle* nh ):
 map_changed(false),map_id_changed(false),map_count_changed(false),use_mapper(false),publish_pointcloud(false),
 publish_image(false),tf_tolerance(0.1)
 {
@@ -11,22 +11,24 @@ publish_image(false),tf_tolerance(0.1)
     node_name = name;
     initial_kf_id = -1;
     last_kf_size = 0;
+    mat4f_base_link_to_camera_origin = Eigen::Matrix4f::Identity();
+    sensor_type = sensor;
     init_ros();
-    init_ORB_SLAM(system);
-
+    init_mapper();
 };
+
+ORB_ROS_Node::~ORB_ROS_Node()
+{
+    delete orb_system;
+}
 
 void ORB_ROS_Node::init_ros()
 {
-    ROS_INFO("INIT ROS!!");
-    global_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/global_map_points",5);
-    current_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/pose",5);
-    image_pub = image_transport->advertise(node_name+"/debug_image",10);
-    tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",5);
-    grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",5);
-
-    save_map_sub = node_handle->subscribe<std_msgs::Bool>(node_name+"/save_map",1, &ORB_ROS_Node::save_map_cb, this);
-
+    ROS_INFO("Reading parameters!!");
+    std::string vocab_path, settings_path;
+    bool use_viewer=false;
+    node_handle->param<std::string>("vocab_path",vocab_path,"");
+    node_handle->param<std::string>("settings_path",settings_path,"");
     node_handle->param<std::string>("map_frame_id", map_frame_id, "map");
     node_handle->param<std::string>("orb_slam3_frame_id", orb_slam3_map_frame_id, "orb_slam3_map");
     node_handle->param<std::string>("camera_frame_id", camera_frame_id, "camera_link");
@@ -36,30 +38,47 @@ void ORB_ROS_Node::init_ros()
     node_handle->param<bool>("use_mapper", use_mapper, false);
     node_handle->param<bool>("publish_pointcloud", publish_pointcloud,false);
     node_handle->param<bool>("publish_image", publish_image,false);
-    node_handle->param<double>("tf_tolerance", tf_tolerance,0.1);
+    node_handle->param<double>("transform_tolerance", tf_tolerance,0.1);
+    node_handle->param<bool>("use_viewer", use_viewer, false);
 
+    ROS_INFO("Setting up ORB_SLAM3!!");
+    orb_system =  new ORB_SLAM3::System(vocab_path,settings_path,sensor_type,use_viewer);
+
+    ROS_INFO("Setting up callbacks!!");
+    dynamic_reconfigure::Server<ORB_SLAM3::orb_slam3Config>::CallbackType  reconfig_callback;
     reconfig_callback = boost::bind(&ORB_ROS_Node::config_cb, this, _1, _2);
-    server.setCallback(reconfig_callback);
+    dr_server.setCallback(reconfig_callback);
 
     tf2_base_link_to_camera_origin = lookup_transform_duration(base_link_id,camera_frame_id, ros::Time(), ros::Duration(3.0));
+
+    ROS_INFO("Advertising topics!");
+    global_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/global_map_points",5);
+    filtered_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/filtered_map_points",5);
+    current_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/pose",5);
+    image_pub = image_transport->advertise(node_name+"/debug_image",10);
+    tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",5);
+    grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",5);
+    
 }
 
-void ORB_ROS_Node::init_ORB_SLAM(ORB_SLAM3::System* system)
+void ORB_ROS_Node::init_mapper()
 {
-        orb_system =  system;
         if(use_mapper)
         {
             cout<<"RUNNING MAPPER THREAD!!!!!!!!!!!!!!!!!!!!!"<<endl;
-            mapper.set_publisher(&grid_pub);
+            mapper.set_grid_pub(&grid_pub);
+            mapper.set_pcl_pub(&filtered_map_points_pub);
+            mapper.set_point_cloud_offset(tf2_base_link_to_camera_origin);
             mapper_thread = new std::thread(&ORB_SLAM3_Mapper::run,&mapper);
         }
 }
 
-void ORB_ROS_Node::stop()
+void ORB_ROS_Node::shutdown()
 {
-    printf("Stopping!!!!!!!!!!!!!!!!!!!!!!");
+    printf("Closing ORB_SLAM_Node...");
     mapper.stop();
-    ros::Duration(1).sleep();
+    orb_system->Shutdown();
+    orb_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 }
 
 void ORB_ROS_Node::publish_current_transform(ros::Time frame_time)
@@ -77,8 +96,7 @@ void ORB_ROS_Node::publish_current_global_map_points(ros::Time frame_time, const
     map_points_to_point_cloud(map_points, cloud);
 
     //Transform the map points from orb_slam3's frame to the map frame
-    auto eigen = tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin));
-    pcl_ros::transformPointCloud( eigen.matrix().cast<float>(), cloud, cloud_out );
+    pcl_ros::transformPointCloud( tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin)).matrix().cast<float>(), cloud, cloud_out );
     cloud_out.header.stamp = frame_time;
     cloud_out.header.frame_id = "map";
     global_map_points_pub.publish(cloud_out);
@@ -231,22 +249,35 @@ tf2::Stamped<tf2::Transform> ORB_ROS_Node::lookup_transform_duration(const strin
     return tf;
 }
 
-void ORB_ROS_Node::save_map_cb(const std_msgs::Bool::ConstPtr& msg)
+void ORB_ROS_Node::config_cb(ORB_SLAM3::orb_slam3Config& config, uint32_t level)
 {
-    if(msg->data == 1)
-    {
-        if(!orb_system->mStrSaveAtlasToFile.empty())
-        {
-            cout<<"Saving atlas to file "+orb_system->mStrSaveAtlasToFile<<endl;
-            ORB_SLAM3::Verbose::PrintMess("Atlas saving to file " + orb_system->mStrSaveAtlasToFile, ORB_SLAM3::Verbose::VERBOSITY_NORMAL);
-            orb_system->SaveAtlas(ORB_SLAM3::System::FileType::BINARY_FILE);
-        }
-        cout << "Saved Atlas Finished" << endl;
-    }
-}
-
-void ORB_ROS_Node::config_cb(const ORB_SLAM3::orb_slam3Config& config, uint32_t level)
-{
+    ROS_INFO("Received dynamic Reconfiguration!");
     if(config.Localization_mode) orb_system->ActivateLocalizationMode();
     else orb_system->DeactivateLocalizationMode();
+
+    if(config.Reset_map)
+    {
+        orb_system->Reset();
+        config.Reset_map = false;
+    }
+
+    mapper.set_filter_radius(config.Search_Radius);
+    mapper.set_filter_min_neighbors(config.Min_Neighbors);
+    mapper.set_dist_thresh(config.dist_thresh);
+    mapper.set_free_thresh(config.free_thresh);
+    mapper.set_free_value(config.free_value);
+    mapper.set_occupied_value(config.occupied_value);
+
+    if(config.gaussian_ksize%2==1)mapper.set_gauusian_ksize(config.gaussian_ksize);
+    else ROS_WARN("Kernel size hasto be odd!");
+
+    if(config.min_z <= config.max_z)
+    {
+        mapper.set_min_z(config.min_z);
+        mapper.set_max_z(config.max_z);
+    }
+    else
+    {
+        ROS_WARN("Received min_z > max_z from dynamic reconfiguration!");
+    }
 }

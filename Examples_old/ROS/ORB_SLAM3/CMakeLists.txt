@@ -10,8 +10,8 @@ ENDIF()
 MESSAGE("Directory " ${PROJECT_SOURCE_DIR})
 MESSAGE("Build type: " ${ROS_BUILD_TYPE})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O3 -march=native")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O3 ")
 
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
@@ -58,7 +58,6 @@ ${PROJECT_SOURCE_DIR}/../../../
 ${PROJECT_SOURCE_DIR}/../../../include
 ${PROJECT_SOURCE_DIR}/../../../include/CameraModels
 ${Pangolin_INCLUDE_DIRS}
-/usr/include/pcl-1.8/
 )
 
 set(LIBS 
@@ -76,20 +75,19 @@ include_directories(
 ${EIGEN3_INCLUDE_DIR}
 )
 
-# generate_dynamic_reconfigure_options(
-#   config/orb_slam3.cfg
-#   #...
-# )
+generate_dynamic_reconfigure_options(
+  config/orb_slam3.cfg
+)
 
 
 # Node for monocular camera
-rosbuild_add_executable(Mono
-src/ros_mono.cc
-)
+# rosbuild_add_executable(Mono
+# src/ros_mono.cc
+# )
 
-target_link_libraries(Mono
-${LIBS}
-)
+# target_link_libraries(Mono
+# ${LIBS}
+# )
 
 # Node for monocular camera (Augmented Reality Demo)
 # rosbuild_add_executable(MonoAR
@@ -103,13 +101,13 @@ ${LIBS}
 # )
 
 # Node for stereo camera
-rosbuild_add_executable(Stereo
-src/ros_stereo.cc
-)
+# rosbuild_add_executable(Stereo
+# src/ros_stereo.cc
+# )
 
-target_link_libraries(Stereo
-${LIBS}
-)
+# target_link_libraries(Stereo
+# ${LIBS}
+# )
 
 # Node for RGB-D camera
 #Accidentally deleted RGBD original src file, removed for now
@@ -122,46 +120,54 @@ ${LIBS}
 # ${LIBS}
 # )
 
+rosbuild_add_library(occupancy_grid
+src/OccupancyGrid.cc
+)
+target_link_libraries(occupancy_grid
+${LIBS}
+)
+
 rosbuild_add_library(pcl_map_maker
 src/pcl_map_maker.cc
 )
 target_link_libraries(pcl_map_maker
-${LIBS}
+${LIBS} occupancy_grid
 )
 
 rosbuild_add_library(ros_common
 src/ros_common.cc
 )
 target_link_libraries(ros_common
-${LIBS} pcl_map_maker
+${LIBS} pcl_map_maker 
 )
 
 rosbuild_add_executable(RGBD2
 src/ros_rgbd_node.cc
 )
-# add_dependencies(RGBD2 ${PROJECT_NAME}_gencfg)
+add_dependencies(RGBD2 ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(RGBD2
 ${LIBS} pcl_map_maker ros_common
 )
 
+
 # Node for monocular-inertial camera
-rosbuild_add_executable(Mono_Inertial
-src/ros_mono_inertial.cc
-)
+# rosbuild_add_executable(Mono_Inertial
+# src/ros_mono_inertial.cc
+# )
 
-target_link_libraries(Mono_Inertial
-${LIBS}
-)
+# target_link_libraries(Mono_Inertial
+# ${LIBS}
+# )
 
-# Node for stereo-inertial camera
-rosbuild_add_executable(Stereo_Inertial
-src/ros_stereo_inertial.cc
-)
+# # Node for stereo-inertial camera
+# rosbuild_add_executable(Stereo_Inertial
+# src/ros_stereo_inertial.cc
+# )
 
-target_link_libraries(Stereo_Inertial
-${LIBS}
-)
+# target_link_libraries(Stereo_Inertial
+# ${LIBS}
+# )
 
 # rosbuild_add_executable(map_maker2
 # src/occupancy_grid.cc
@@ -171,15 +177,15 @@ ${LIBS}
 # ${LIBS}
 # )
 
-rosbuild_add_library(RGBDNodelet
-src/ros_rgbd_nodelet.cc
-)
-target_link_libraries(RGBDNodelet
-${LIBS} pcl_map_maker ros_common
-)
+# rosbuild_add_library(RGBDNodelet
+# src/ros_rgbd_nodelet.cc
+# )
+# target_link_libraries(RGBDNodelet
+# ${LIBS} pcl_map_maker ros_common
+# )
 
-install(
-   FILES nodelet_plugins.xml
-   DESTINATION ${PROJECT_SOURCE_DIR}/devel/share
-)
+# install(
+#    FILES nodelet_plugins.xml
+#    DESTINATION ${PROJECT_SOURCE_DIR}/devel/share
+# )
 

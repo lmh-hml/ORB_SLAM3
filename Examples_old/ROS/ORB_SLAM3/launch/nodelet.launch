@@ -1,6 +1,6 @@
 <launch>
 
-    <arg name="settings" default="r200_rgbd"/>
+    <arg name="settings" default="astra_rgbd"/>
     <arg name="manager_name" default="manager"/>
 
     <arg name="map_frame" default="orb_slam3_map"/>
@@ -9,7 +9,7 @@
     <arg name="load" default="false"/>
 
     <arg name="vocab_path" default="/home/lmh/ORB_SLAM3/Vocabulary/ORBvoc.txt"/>
-    <arg name="settings_path" default="/home/lmh/ORB_SLAM3/Examples_old/RGB-D/r200_rgbd.yaml"/>
+    <arg name="settings_path" default="/home/lmh/ORB_SLAM3/Examples_old/RGB-D/$(arg settings).yaml"/>
 
 
     <param name="map_frame_id" type="string" value="$(arg map_frame)"/>

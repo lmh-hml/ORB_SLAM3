@@ -88,7 +88,7 @@ bool map_points_to_point_cloud(const std::vector<ORB_SLAM3::MapPoint*> map_point
     if(map_points.empty()) return false;
 
     const int num_channels = 3;
-    cloud.header.frame_id = "orb_slam3_map";
+    cloud.header.frame_id = map_frame_id;
     cloud.height = 1;
     cloud.width = map_points.size();
     cloud.is_bigendian = false;
@@ -385,4 +385,14 @@ void map_point_to_msg(ORB_SLAM3::MapPoint* map_point, orb_slam3_msgs::MapPoint& 
     msg.position.x = point_translation.x();
     msg.position.y = point_translation.y();
     msg.position.z = point_translation.z();
+}
+
+float distance_btw_points(float x1, float y1, float x2, float y2)
+{
+    return hypot(x2-x1, y2-y1);
+}
+
+float angle(float x1, float y1, float x2, float y2)
+{
+    return atan2(y2-y1,x2-x1);
 }

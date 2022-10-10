@@ -81,5 +81,5 @@ Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500
 
 System.LoadAtlasFromFile: "lingao_atlas"
-System.SaveAtlasToFile: "lingao_atlas"
+#System.SaveAtlasToFile: "lingao_atlas"
 

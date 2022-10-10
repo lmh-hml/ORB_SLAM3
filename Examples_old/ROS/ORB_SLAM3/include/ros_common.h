@@ -43,13 +43,14 @@ typedef pcl::PointCloud<pcl::PointXYZ> Pointcloud;
 class ORB_ROS_Node
 {
     public:
-    ORB_ROS_Node(std::string name, ORB_SLAM3::System* system, ros::NodeHandle* nh );
+    ORB_ROS_Node(std::string name, ORB_SLAM3::System::eSensor sensor, ros::NodeHandle* nh );
+    ~ORB_ROS_Node();
 
     void init_ros();
 
-    void init_ORB_SLAM(ORB_SLAM3::System* system);
+    void init_mapper();
 
-    void stop();
+    void shutdown();
 
     void publish_current_tracked_points(ros::Time frame_time);
 
@@ -86,6 +87,7 @@ class ORB_ROS_Node
     ros::Time current_frame_time;
 
     ros::Publisher global_map_points_pub;
+    ros::Publisher filtered_map_points_pub;
     ros::Publisher current_pose_pub;
     ros::Publisher tracking_state_pub;
     ros::Publisher grid_pub;
@@ -93,8 +95,7 @@ class ORB_ROS_Node
     ros::Subscriber goal_sub;
     ros::Subscriber save_map_sub;
 
-    dynamic_reconfigure::Server<ORB_SLAM3::orb_slam3Config> server;
-    dynamic_reconfigure::Server<ORB_SLAM3::orb_slam3Config>::CallbackType  reconfig_callback;
+    dynamic_reconfigure::Server<ORB_SLAM3::orb_slam3Config> dr_server;
 
     image_transport::ImageTransport* image_transport;
     image_transport::Publisher image_pub;
@@ -108,6 +109,7 @@ class ORB_ROS_Node
 
     //Looked up upon node initialization. Used to determine the tf from 2D map to orb_slam3's map origin
     tf2::Transform tf2_base_link_to_camera_origin;
+    Eigen::Matrix4f mat4f_base_link_to_camera_origin;
 
     //Camera position from orb_slam3. Updates every time an image is processed.
     tf2::Transform tf2_orb_slam3_map_to_camera;
@@ -120,6 +122,7 @@ class ORB_ROS_Node
     bool map_id_changed, map_count_changed, is_lost, map_changed;
 
     ORB_SLAM3_Mapper mapper;
+    ORB_SLAM3::System::eSensor sensor_type;
     std::thread* mapper_thread;
     bool use_mapper;
     bool publish_pointcloud;
@@ -128,15 +131,9 @@ class ORB_ROS_Node
     double tf_tolerance;
     
     tf2::Transform get_transform_map_to_target(const tf2::Transform& map_to_camera, const std::string& target_frame_id);
-    
     void send_transform(tf2::Transform tf,const std::string& src, const std::string& target, ros::Time time=ros::Time::now());
     geometry_msgs::Pose transform_to_pose(const tf2::Transform tf);
-
     tf2::Stamped<tf2::Transform> lookup_transform(const string& src, const string& target, ros::Time time=ros::Time());
-
     tf2::Stamped<tf2::Transform> lookup_transform_duration(const string& src, const string& target, ros::Time time=ros::Time::now(), ros::Duration duration = ros::Duration(1.0));
-
-    void save_map_cb(const std_msgs::Bool::ConstPtr& msg);
-
-    void config_cb(const ORB_SLAM3::orb_slam3Config& config, uint32_t level);
+    void config_cb(ORB_SLAM3::orb_slam3Config& config, uint32_t level);
 };

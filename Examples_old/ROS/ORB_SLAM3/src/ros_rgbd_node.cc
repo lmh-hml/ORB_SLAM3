@@ -3,47 +3,27 @@
 using namespace std;
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
 
-ORB_SLAM3::System* orb_system;
-RGBD* rgbd;
+std::unique_ptr<RGBD> rgbd;
 
-void sigint_handler(int sig)
+void shutdown(int sig)
 {
-    ROS_INFO("SHUTTING DOWN ORB SLAM");
-    rgbd->stop();
-    orb_system->Shutdown();
-    //orb_system->SaveAtlas(ORB_SLAM3::System::FileType::BINARY_FILE);
-    orb_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
-    std::cout<<"Finished SHUTTING DOWN ORB SLAM"<<std::endl;
+    rgbd->shutdown();
     ros::shutdown();
 }
 
 int main(int argc, char **argv)
 {
     ROS_INFO("ORB_SLAM NODE!...");
-    ros::init(argc, argv, "RGBD");
+    ros::init(argc, argv, "RGBD",ros::init_options::NoSigintHandler);
     ros::start();
-
-
-    if(argc != 3)
-    {
-        cerr << endl << "Usage: rosrun ORB_SLAM3 RGBD path_to_vocabulary path_to_settings" << endl;        
-        ros::shutdown();
-        return 1;
-    }    
 
     ros::NodeHandle nh;
     bool use_viewer = false;
-    nh.param<bool>("use_viewer", use_viewer, false);
-
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM3::System SLAM(argv[1],argv[2],ORB_SLAM3::System::RGBD,use_viewer);
-    orb_system = &SLAM;
-    signal(SIGINT,sigint_handler);
-
-    rgbd = new RGBD("ORB_SLAM3_RGBD", &SLAM, &nh);
-
+    rgbd = make_unique<RGBD>("ORB_SLAM3_RGBD", ORB_SLAM3::System::RGBD, &nh);
+    signal(SIGINT, shutdown);
     ros::spin();
-    //SLAM.Shutdown();
+    printf("Closed ORB_SLAM 3 Node...");
 
     return 0;
 }
