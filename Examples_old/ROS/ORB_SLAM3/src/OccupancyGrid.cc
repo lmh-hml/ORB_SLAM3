@@ -103,9 +103,4 @@ void OccupancyGrid::process_free_and_occupied(uint16_t free_thresh=5, int ksize=
             else image.at<int8_t>(i,j) = 50;
         }
     }
-
-    size_t x, y;
-    get_map_origin(x,y);
-    cv::circle(image,{x, y},10,{100,0,0},-1);
-
 }
