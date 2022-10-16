@@ -19,11 +19,12 @@ publish_image(false),tf_tolerance(0.1)
 void ORB_ROS_Node::init_ros()
 {
     ROS_INFO("INIT ROS!!");
-    global_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/global_map_points",5);
-    current_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/pose",5);
+    global_map_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/global_map_points",3);
+    current_pose_pub = node_handle->advertise<geometry_msgs::PoseStamped>(node_name+"/pose",3);
     image_pub = image_transport->advertise(node_name+"/debug_image",10);
-    tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",5);
-    grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",5);
+    tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",3);
+    grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",3);
+    current_tracked_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/current_tracked_points",3);
 
     save_map_sub = node_handle->subscribe<std_msgs::Bool>(node_name+"/save_map",1, &ORB_ROS_Node::save_map_cb, this);
 
@@ -82,8 +83,22 @@ void ORB_ROS_Node::publish_current_global_map_points(ros::Time frame_time, const
     cloud_out.header.stamp = frame_time;
     cloud_out.header.frame_id = "map";
     global_map_points_pub.publish(cloud_out);
-
 }
+
+void ORB_ROS_Node::publish_current_tracked_points(ros::Time frame_time)
+{
+    sensor_msgs::PointCloud2 cloud, cloud_out;
+    cloud.header.stamp = frame_time;
+    cloud.header.frame_id = orb_slam3_map_frame_id;
+    map_points_to_point_cloud(orb_system->GetTrackedMapPoints(), cloud);
+
+    //Transform the map points from orb_slam3's frame to the map frame
+    auto eigen = tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin));
+    pcl_ros::transformPointCloud( eigen.matrix().cast<float>(), cloud, cloud_out );
+    cloud_out.header.stamp = frame_time;
+    cloud_out.header.frame_id = "map";
+    current_tracked_points_pub.publish(cloud_out);
+} 
 
 void ORB_ROS_Node::publish_orb_slam_debug_image(ros::Time frame_time)
 {
@@ -168,6 +183,7 @@ void ORB_ROS_Node::update(Sophus::SE3f position, ros::Time current_frame_time)
         {
             std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
             publish_current_global_map_points(current_frame_time,map_points);
+            publish_current_tracked_points(current_frame_time);
         }
         if(publish_image)publish_orb_slam_debug_image(current_frame_time);
         publish_tracking_state(current_frame_time,tracking_state);

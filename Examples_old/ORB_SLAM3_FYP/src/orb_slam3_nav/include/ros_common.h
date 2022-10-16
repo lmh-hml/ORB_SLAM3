@@ -89,6 +89,7 @@ class ORB_ROS_Node
     ros::Publisher current_pose_pub;
     ros::Publisher tracking_state_pub;
     ros::Publisher grid_pub;
+    ros::Publisher current_tracked_points_pub;
 
     ros::Subscriber goal_sub;
     ros::Subscriber save_map_sub;

@@ -34,6 +34,13 @@
 
 #include<opencv2/core/core.hpp>
 
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/PCLPointCloud2.h>
+#include <pcl/common/common.h>
+#include <pcl_ros/point_cloud.h>
+
+
 #include "../../include/System.h"
 
 const tf2::Matrix3x3 tf_orb_to_ros(0,  0,  1,
@@ -395,4 +402,23 @@ float distance_btw_points(float x1, float y1, float x2, float y2)
 float angle(float x1, float y1, float x2, float y2)
 {
     return atan2(y2-y1,x2-x1);
+}
+
+bool map_points_to_point_cloud2(const std::vector<ORB_SLAM3::MapPoint *> &map_points, pcl::PointCloud<pcl::PointXYZ>::Ptr pcl)
+{
+    if(map_points.empty())return false;
+    pcl->points.clear();
+    for (auto mp: map_points)
+    { 
+        if (mp!=nullptr)
+        {
+            tf2::Vector3 point(mp->GetWorldPos()(0), mp->GetWorldPos()(1), mp->GetWorldPos()(2));
+            point = tf_orb_to_ros * point;
+            pcl->points.push_back(pcl::PointXYZ());
+            pcl->back().x = point.x();
+            pcl->back().y = point.y();
+            pcl->back().z = point.z();
+        }
+    }
+    return true;
 }

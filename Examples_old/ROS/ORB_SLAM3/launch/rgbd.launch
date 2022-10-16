@@ -17,6 +17,8 @@
     <param name="publish_pointcloud" type="boolean" value="true"/>
     <param name="publish_image" type="boolean" value="true"/>
     <param name="transform_tolerance " type="double" value="0.1"/>
+    <param name="tracked_points_min_z" type="double" value="0.0"/>
+    <param name="tracked_points_max_z" type="double" value="0.3"/>
 
     <node pkg="ORB_SLAM3" name="RGBD" type="RGBD2" output="screen" launch-prefix="gdb -ex run --args">
         <remap from="/camera/depth_registered/image_raw" to="/camera/depth/image_raw"/>

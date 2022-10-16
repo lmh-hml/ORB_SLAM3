@@ -3,7 +3,7 @@
 
 ORB_ROS_Node::ORB_ROS_Node(std::string name, ORB_SLAM3::System::eSensor sensor, ros::NodeHandle* nh ):
 map_changed(false),map_id_changed(false),map_count_changed(false),use_mapper(false),publish_pointcloud(false),
-publish_image(false),tf_tolerance(0.1)
+publish_image(false),tf_tolerance(0.1),run_point_cloud_thread(false),point_cloud_thread_publish(false),tracked_point_min_z(0.0),tracked_point_max_z(10.0)
 {
     node_handle = nh;
     image_transport = new image_transport::ImageTransport(*node_handle);
@@ -14,7 +14,7 @@ publish_image(false),tf_tolerance(0.1)
     mat4f_base_link_to_camera_origin = Eigen::Matrix4f::Identity();
     sensor_type = sensor;
     init_ros();
-    init_mapper();
+    init_threads();
 };
 
 ORB_ROS_Node::~ORB_ROS_Node()
@@ -40,6 +40,8 @@ void ORB_ROS_Node::init_ros()
     node_handle->param<bool>("publish_image", publish_image,false);
     node_handle->param<double>("transform_tolerance", tf_tolerance,0.1);
     node_handle->param<bool>("use_viewer", use_viewer, false);
+    node_handle->param<float>("tracked_points_min_z", tracked_point_min_z, 0.0);
+    node_handle->param<float>("tracked_points_max_z", tracked_point_max_z, 5.0);
 
     ROS_INFO("Setting up ORB_SLAM3!!");
     orb_system =  new ORB_SLAM3::System(vocab_path,settings_path,sensor_type,use_viewer);
@@ -58,10 +60,10 @@ void ORB_ROS_Node::init_ros()
     image_pub = image_transport->advertise(node_name+"/debug_image",10);
     tracking_state_pub = node_handle->advertise<std_msgs::Int16>(node_name+"/tracking_state",5);
     grid_pub = node_handle->advertise<nav_msgs::OccupancyGrid>(node_name+"/occupancy_grid",5);
-    
+    current_tracked_points_pub = node_handle->advertise<sensor_msgs::PointCloud2>(node_name+"/current_tracked_points",3);
 }
 
-void ORB_ROS_Node::init_mapper()
+void ORB_ROS_Node::init_threads()
 {
         if(use_mapper)
         {
@@ -71,12 +73,22 @@ void ORB_ROS_Node::init_mapper()
             mapper.set_point_cloud_offset(tf2_base_link_to_camera_origin);
             mapper_thread = new std::thread(&ORB_SLAM3_Mapper::run,&mapper);
         }
+
+        if(publish_pointcloud)
+        {
+            run_point_cloud_thread = true;
+            point_cloud_thread = new std::thread(&ORB_ROS_Node::point_cloud_thread_run,this);
+        }
 }
 
 void ORB_ROS_Node::shutdown()
 {
     printf("Closing ORB_SLAM_Node...");
     mapper.stop();
+    run_point_cloud_thread = false;
+    point_cloud_thread_publish = false;
+    if(mapper_thread)mapper_thread->join();
+    if(point_cloud_thread)point_cloud_thread->join();
     orb_system->Shutdown();
     orb_system->SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 }
@@ -88,20 +100,61 @@ void ORB_ROS_Node::publish_current_transform(ros::Time frame_time)
     send_transform(map_to_odom,"map","odom",ros::Time::now());
 }
 
+void ORB_ROS_Node::publish_current_tracked_points(ros::Time frame_time)
+{
+    sensor_msgs::PointCloud2 cloud, cloud_out;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pcl(new pcl::PointCloud<pcl::PointXYZ>);
+    cloud.header.stamp = frame_time;
+    cloud.header.frame_id = orb_slam3_map_frame_id;
+    map_points_to_point_cloud2(orb_system->GetTrackedMapPoints(), pcl);
+
+    passthrough.setInputCloud(pcl);
+    passthrough.setFilterFieldName("z");
+    passthrough.setFilterLimits(tracked_point_min_z,tracked_point_max_z);
+    passthrough.filter(*pcl);
+    pcl::toROSMsg<pcl::PointXYZ>(*pcl,cloud);
+
+    //Transform the map points from orb_slam3's frame to the map frame
+    pcl_ros::transformPointCloud( tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin)).matrix().cast<float>(), cloud, cloud_out );
+    cloud_out.header.stamp = frame_time;
+    cloud_out.header.frame_id = "map";
+    current_tracked_points_pub.publish(cloud_out);
+}
+
+void ORB_ROS_Node::point_cloud_thread_run()
+{
+    printf("Point cloud thread started!");
+    while(run_point_cloud_thread)
+    {
+        if(point_cloud_thread_publish)
+        {
+            std::vector<ORB_SLAM3::MapPoint*> map_points= orb_system->GetAtlas()->GetCurrentMap()->GetAllMapPoints();
+            publish_current_global_map_points(current_frame_time,map_points);
+            publish_current_tracked_points(current_frame_time);
+            {
+                std::unique_lock<std::mutex>(point_cloud_thread_mutex);
+                point_cloud_thread_publish = false;
+            }
+        }
+    }
+    printf("Exiting point cloud thread");
+}
+
 void ORB_ROS_Node::publish_current_global_map_points(ros::Time frame_time, const std::vector<ORB_SLAM3::MapPoint*>& map_points)
 {
     sensor_msgs::PointCloud2 cloud, cloud_out;
     cloud.header.stamp = frame_time;
     cloud.header.frame_id = orb_slam3_map_frame_id;
     map_points_to_point_cloud(map_points, cloud);
+    
 
     //Transform the map points from orb_slam3's frame to the map frame
-    pcl_ros::transformPointCloud( tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin)).matrix().cast<float>(), cloud, cloud_out );
+    auto eigen = tf2::transformToEigen(tf2::toMsg(tf2_base_link_to_camera_origin));
+    pcl_ros::transformPointCloud( eigen.matrix().cast<float>(), cloud, cloud_out );
     cloud_out.header.stamp = frame_time;
     cloud_out.header.frame_id = "map";
     global_map_points_pub.publish(cloud_out);
-
-}
+} 
 
 void ORB_ROS_Node::publish_orb_slam_debug_image(ros::Time frame_time)
 {
@@ -184,8 +237,13 @@ void ORB_ROS_Node::update(Sophus::SE3f position, ros::Time current_frame_time)
 
         if(publish_pointcloud)
         {
-            std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
-            publish_current_global_map_points(current_frame_time,map_points);
+            // std::vector<ORB_SLAM3::MapPoint*> map_points= map->GetAllMapPoints();
+            // publish_current_global_map_points(current_frame_time,map_points);
+            // publish_current_tracked_points(current_frame_time);
+            {
+                std::unique_lock<std::mutex>(point_cloud_thread_mutex);
+                point_cloud_thread_publish = true;
+            }
         }
         if(publish_image)publish_orb_slam_debug_image(current_frame_time);
         publish_tracking_state(current_frame_time,tracking_state);

@@ -48,7 +48,7 @@ class ORB_ROS_Node
 
     void init_ros();
 
-    void init_mapper();
+    void init_threads();
 
     void shutdown();
 
@@ -91,6 +91,7 @@ class ORB_ROS_Node
     ros::Publisher current_pose_pub;
     ros::Publisher tracking_state_pub;
     ros::Publisher grid_pub;
+    ros::Publisher current_tracked_points_pub;
 
     ros::Subscriber goal_sub;
     ros::Subscriber save_map_sub;
@@ -124,9 +125,16 @@ class ORB_ROS_Node
     ORB_SLAM3_Mapper mapper;
     ORB_SLAM3::System::eSensor sensor_type;
     std::thread* mapper_thread;
+    std::thread* point_cloud_thread;
     bool use_mapper;
     bool publish_pointcloud;
     bool publish_image;
+    std::mutex point_cloud_thread_mutex;
+    bool run_point_cloud_thread;
+    bool point_cloud_thread_publish;
+    pcl::PassThrough<pcl::PointXYZ> passthrough;
+    float tracked_point_min_z,tracked_point_max_z;
+
 
     double tf_tolerance;
     
@@ -136,4 +144,5 @@ class ORB_ROS_Node
     tf2::Stamped<tf2::Transform> lookup_transform(const string& src, const string& target, ros::Time time=ros::Time());
     tf2::Stamped<tf2::Transform> lookup_transform_duration(const string& src, const string& target, ros::Time time=ros::Time::now(), ros::Duration duration = ros::Duration(1.0));
     void config_cb(ORB_SLAM3::orb_slam3Config& config, uint32_t level);
+    void point_cloud_thread_run();
 };
