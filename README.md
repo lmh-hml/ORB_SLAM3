@@ -2,7 +2,7 @@
 
 ### Forked from original ORB-SLAM 3 repository for a Fina Year Project. Please see below for the README for the original repository.
 
-Please follow instructions below to install ORB-SLAM 3 and all dependencies.
+Please follow instructions in original README (under OBR-SLAM3) to install ORB-SLAM 3 and all dependencies.
 This fork also depends on pcl-ros (http://wiki.ros.org/pcl_ros), and the Point cloud library.(https://pointclouds.org/).
 
 AFTER installing ORB-SLAM 3 and its dependencies, install the following:
