@@ -1,3 +1,23 @@
+# ORB-SLAM 3 for Autonomous navigation in ROS
+
+### Forked from original ORB-SLAM 3 repository for a Fina Year Project. Please see below for the README for the original repository.
+
+Please follow instructions in original README (under OBR-SLAM3) to install ORB-SLAM 3 and all dependencies.
+This fork also depends on pcl-ros (http://wiki.ros.org/pcl_ros), and the Point cloud library.(https://pointclouds.org/).
+
+AFTER installing ORB-SLAM 3 and its dependencies, install the following:
+```
+sudo apt-get install ros-melodic-pcl-ros
+sudo apt install libpcl-dev
+```
+You can then build ORB-SLAM 3 and the ROS nodes with:
+```
+cd path/to/ORB_SLAM3
+./build
+./build_ros.sh
+```
+
+
 # ORB-SLAM3
 
 ### V1.0, December 22th, 2021
