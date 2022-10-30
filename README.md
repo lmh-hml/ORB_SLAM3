@@ -26,7 +26,7 @@ The files are:
 
 **include/pcl_map_maker.h & src/pcl_map_maker.cc** *(src code for grid mapping thread)*
 
-**include/ros_common.h & src/ros_common.h** *(src code for ORB_SLAM 3 ROS node)*
+**include/ros_common.h & src/ros_common.cc** *(src code for ORB_SLAM 3 ROS node)*
 
 **src/ros_rgbd_node.cc** *(modified from original repository. Runs ORB-SLAM 3 in rgbd mode.)*
 
