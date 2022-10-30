@@ -23,7 +23,7 @@ class OccupancyGrid
     public:
     OccupancyGrid(size_t w, size_t h, double resolution);
 
-    void resize_image(size_t up, size_t down, size_t left, size_t right);
+    void resize_image(size_t up, size_t down, size_t left, size_t right);W
 
     void clear();
 

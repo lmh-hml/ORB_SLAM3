@@ -1,0 +1,19 @@
+obstacle_range: 5.0
+raytrace_range: 5.5
+max_obstacle_height: 0.5
+footprint: [[-0.25, -0.23], [-0.25, 0.23], [0.25, 0.23], [0.25, -0.23]] 
+#robot_radius: ir_of_robot
+
+inflation_radius: 0.3
+cost_scaling_factor: 3.0
+
+
+# map_type: costmap
+# observation_sources: laser
+# #orb_scan: {sensor_frame: camera_link, data_type: PointCloud2, topic: /pcl_filtered, marking: true, clearing: true}
+# laser: {sensor_frame: base_scan, data_type: LaserScan, topic: scan, marking: true, clearing: true}
+
+
+
+
+ 
