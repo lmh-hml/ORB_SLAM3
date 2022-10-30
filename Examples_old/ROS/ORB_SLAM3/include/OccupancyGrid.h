@@ -6,8 +6,6 @@
 #include<math.h>
 
 #include<ros/ros.h>
-#include <orb_slam3_msgs/orb_slam_map_msg.h>
-#include <orb_slam3_msgs/keyframe_pointcloud.h>
 #include <nav_msgs/OccupancyGrid.h>
 
 #include<opencv2/core/core.hpp>

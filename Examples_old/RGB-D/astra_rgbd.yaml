@@ -17,35 +17,19 @@ Camera.p1: -0.000330
 Camera.p2:  -0.003854
 Camera.k3: 0.0
 
-# Camera.fx: 580.096
-# Camera.fy: 580.19
-# Camera.cx: 324.852
-# Camera.cy:  225.154
-
-# Camera.k1: 0.117828
-# Camera.k2: -0.209953
-# Camera.p1: 0.00169
-# Camera.p2:  0.003167
-# Camera.k3: 0.0
-
 Camera.width: 640  
 Camera.height: 480
 
 # Camera frames per second 
 Camera.fps: 30.0
-
 # IR projector baseline times fx (aprox.)
 Camera.bf: 12.765599
-
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
 Camera.RGB: 1
-
 # Close/Far threshold. Baseline times.
 ThDepth: 198.896522
-
 # Deptmap values factor 
 DepthMapFactor: 1.0 # 1.0 for ROS_bag
-
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------

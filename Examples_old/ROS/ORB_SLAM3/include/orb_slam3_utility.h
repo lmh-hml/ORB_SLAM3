@@ -16,15 +16,6 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 
-#include <orb_slam3_msgs/keyframe_msg.h>
-#include <orb_slam3_msgs/orb_slam_map_msg.h>
-#include <orb_slam3_msgs/keyframe_pointcloud.h>
-
-#include <orb_slam3_msgs/MapPoint.h>
-#include <orb_slam3_msgs/KeyframeWithPoints.h>
-#include <orb_slam3_msgs/KeyframeWithIndices.h>
-#include <orb_slam3_msgs/Map.h>
-
 #include <tf/tf.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -290,72 +281,9 @@ std::vector<cv::Point2d> bresenham_line(int x1, int y1, int x2, int y2)
     return line;
 }
 
-void keyframe_to_msg(ORB_SLAM3::KeyFrame* keyframe, orb_slam3_msgs::keyframe_msg& msg, bool mp_id_only=false)
-{
-    geometry_msgs::Transform tf_msg;
-    geometry_msgs::Pose kf_pose;
-    geometry_msgs::PoseArray map_points_msg;
-    auto map_points = keyframe->GetMapPoints();
-    tf2_to_transform_and_pose_msg(orb_slam_pose_to_tf(keyframe->GetPose()),tf_msg,kf_pose);
-    std::vector<ORB_SLAM3::MapPoint*> mp_vec(map_points.begin(),map_points.end());
 
-    if(!mp_id_only)
-    {
-        map_points_to_pose_array_msg(mp_vec,map_points_msg);
-    }
 
-    for(auto mp: mp_vec)
-    {
-        msg.map_points_ids.push_back(mp->mnId);
-    }
 
-    msg.map_points = map_points_msg;
-    msg.pose = kf_pose;
-    msg.id = keyframe->mnId;
-}
-
-void keyframe_to_keyframe_pointcloud_msg(ORB_SLAM3::KeyFrame* keyframe,  orb_slam3_msgs::keyframe_pointcloud& kf_pcl)
-{
-    auto map_points = keyframe->GetMapPoints();
-    geometry_msgs::Transform tf;
-    kf_pcl.map_id = keyframe->GetMap()->GetId();
-    kf_pcl.keyframe_id = keyframe->mnId;
-    tf2_to_transform_and_pose_msg(orb_slam_pose_to_tf(keyframe->GetPose()),tf, kf_pcl.pose);
-    map_points_to_point_cloud( vector<ORB_SLAM3::MapPoint*>(map_points.begin(), map_points.end()), kf_pcl.pointcloud,kf_pcl.header.frame_id);
-}
-
-void orb_slam_map_to_msg(ORB_SLAM3::Map* map, orb_slam3_msgs::orb_slam_map_msg& msg)
-{
-    geometry_msgs::PoseArray pose_array;
-    {
-        std::vector<ORB_SLAM3::KeyFrame *> keyframes;
-        //Set map id
-        msg.id = map->GetId();
-        msg.init_keyframe_id = map->GetInitKFid();
-        //Set up keyframes
-        keyframes = map->GetAllKeyFrames();
-        
-        sort(keyframes.begin(), keyframes.end(), ORB_SLAM3::KeyFrame::lId);
-
-        for(ORB_SLAM3::KeyFrame* kf : keyframes)
-        {
-            orb_slam3_msgs::keyframe_msg kf_msg;
-            keyframe_to_msg(kf, kf_msg, true);
-            msg.keyframes.push_back(kf_msg);
-        }
-
-        std::vector<ORB_SLAM3::MapPoint*>mp_vec = map->GetAllMapPoints();
-        sort(mp_vec.begin(),mp_vec.end(),compare_map_point);
-        map_points_to_pose_array_msg(mp_vec,pose_array);
-    }   
-    
-    msg.map_points = pose_array;
-
-    geometry_msgs::Point min, max;
-    getMinMax(msg.map_points,min,max);
-    msg.max_point = max;
-    msg.min_point = min;
-}
 
 void print_tf(geometry_msgs::TransformStamped tf)
 {
@@ -383,16 +311,7 @@ void print_tf(geometry_msgs::Transform tf)
                     RAD2DEG(roll), RAD2DEG(pitch), RAD2DEG(yaw));
 }
 
-void map_point_to_msg(ORB_SLAM3::MapPoint* map_point, orb_slam3_msgs::MapPoint& msg)
-{
-    msg.id = map_point->mnId;
-    Eigen::Vector3f v3f = map_point->GetWorldPos();
-    tf2::Vector3 point_translation(map_point->GetWorldPos()(0), map_point->GetWorldPos()(1), map_point->GetWorldPos()(2));
-    point_translation = tf_orb_to_ros * point_translation;
-    msg.position.x = point_translation.x();
-    msg.position.y = point_translation.y();
-    msg.position.z = point_translation.z();
-}
+
 
 float distance_btw_points(float x1, float y1, float x2, float y2)
 {
