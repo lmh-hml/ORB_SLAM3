@@ -17,6 +17,31 @@ cd path/to/ORB_SLAM3
 ./build_ros.sh
 ```
 
+## This section is relevant for the FYP Project assessment:
+While there have been numerous small changes made throughout this repository, the original source codes and files most relevant to the FYP are under
+/Examples_old/ROS/ORB_SLAM3
+
+The files are:
+**include/OccupancyGrid.h & src/OccupancyGrid.cc** *(src code for OccupancyGrid class)*
+
+**include/pcl_map_maker.h & src/pcl_map_maker.cc** *(src code for grid mapping thread)*
+
+**include/ros_common.h & src/ros_common.h** *(src code for ORB_SLAM 3 ROS node)*
+
+**src/ros_rgbd_node.cc** *(modified from original repository. Runs ORB-SLAM 3 in rgbd mode.)*
+
+**lauch/rgbd.launch** *(Launches the node for gazebo simulator)*
+
+**lauch/lingao.launch** *(Launches the node for robot. Only useful when ran on the robot.)*
+
+**launch/move_base_lingao.launch** *(Launches the ROS' move base configured for use with ORB-SLAM3 node and the robot.)*
+
+**launch/config** *(Contains files to configure move base)*
+
+**grid_map/...** *(Folder containgin grid map image, and the ORB-SLAM3 .osa map file to build the grid map from.)*
+
+**astra_rgbd.yaml** *(ORB-SLAM3 configuration file needed to run ORB-SLAM 3 with the robot's camera. Useful only on the robot.)*
+
 
 # ORB-SLAM3
 
